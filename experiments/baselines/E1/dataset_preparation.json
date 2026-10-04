@@ -1,0 +1,68 @@
+{
+  "pipeline_name": "ASVspoof2019_LA_preparation",
+  "pipeline_version": "v1.0",
+  "created_utc": "2026-10-04T11:47:59.224868+00:00",
+  "dataset": {
+    "name": "ASVspoof 2019 Logical Access",
+    "raw_root": "/home/abhijithjayan23bcs109/Audio_DeepFake_Classification/data/raw/ASVspoof2019_LA",
+    "official_partitions_used": [
+      "train",
+      "dev",
+      "eval"
+    ]
+  },
+  "processing": {
+    "random_split": false,
+    "uses_official_protocol_partitions": true,
+    "audio_modified": false,
+    "spectrograms_created": false,
+    "sample_rate_conversion": false,
+    "cropping": false,
+    "padding": false,
+    "augmentation": false
+  },
+  "label_definition": {
+    "bonafide": 0,
+    "spoof": 1,
+    "unknown": -1
+  },
+  "counts": {
+    "train": 25380,
+    "dev": 24844,
+    "eval": 71237
+  },
+  "class_counts": {
+    "train": {
+      "bonafide": 2580,
+      "spoof": 22800,
+      "unknown": 0
+    },
+    "dev": {
+      "bonafide": 2548,
+      "spoof": 22296,
+      "unknown": 0
+    },
+    "eval": {
+      "bonafide": 7355,
+      "spoof": 63882,
+      "unknown": 0
+    }
+  },
+  "speaker_overlap": {
+    "train_dev": 0,
+    "train_eval": 0,
+    "dev_eval": 0
+  },
+  "missing_audio": {
+    "train": 0,
+    "dev": 0,
+    "eval": 0
+  },
+  "duplicate_ids": [],
+  "protocol_sha256": {
+    "ASVspoof2019.LA.cm.train.trn.txt": "65a289e4009400b42bb4f1e47ac60938d93f7f595452d1f220d35defc3de8ab8",
+    "ASVspoof2019.LA.cm.dev.trl.txt": "2fedaebf1ba3ae1a9bb7d3ec916804ac237b4eee063a27fa92e6549f03d129c7",
+    "ASVspoof2019.LA.cm.eval.trl.txt": "84fce576efff092269a0a6ad247d2e9f2f7b4d4e25a4545efb2518da92708036"
+  },
+  "warnings": []
+}
