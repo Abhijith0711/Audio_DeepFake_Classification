@@ -22,12 +22,6 @@ A deep learning research framework for lightweight, robust detection of syntheti
   - [AT-ADD Track 2 Evaluation](#at-add-track-2-eval-results)
   - [Domain-Specific Breakdown on AT-ADD (E1 v4)](#domain-specific-breakdown-on-at-add-e1-v4)
 - [Repository Structure](#repository-structure)
-- [Getting Started & Reproduction Guide](#getting-started--reproduction-guide)
-  - [Environment Setup](#1-environment-setup)
-  - [Data Preparation & Integrity Audits](#2-data-preparation--integrity-audits)
-  - [Duration & Padding Diagnostics](#3-duration--padding-diagnostics)
-  - [Training & Evaluation Notebooks](#4-training--evaluation-notebooks)
-- [Citation & References](#citation--references)
 
 ---
 
