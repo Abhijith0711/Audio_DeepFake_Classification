@@ -1,0 +1,69 @@
+{
+  "experiment": "E1",
+  "experiment_version": "v2.0",
+  "input_preprocessing_version": "v2.0",
+  "dataset_preparation_version": "v1.0",
+  "model": {
+    "name": "MobileNetV3-Small",
+    "weights": "scratch",
+    "input_channels": 1,
+    "num_classes": 2,
+    "total_parameters": 1519618,
+    "trainable_parameters": 1519618
+  },
+  "dataset": {
+    "name": "ASVspoof 2019 Logical Access",
+    "train_manifest": "data/manifests/ASVSpoof/train_manifest.csv",
+    "dev_manifest": "data/manifests/ASVSpoof/dev_manifest.csv",
+    "eval_manifest": "data/manifests/ASVSpoof/eval_manifest.csv",
+    "train_samples": 25380,
+    "dev_samples": 24844,
+    "eval_samples": 71237
+  },
+  "audio": {
+    "sample_rate": 24000,
+    "segment_seconds": 4,
+    "num_samples": 96000
+  },
+  "spectrogram": {
+    "n_fft": 1024,
+    "win_length": 600,
+    "hop_length": 240,
+    "n_mels": 80,
+    "window": "hann",
+    "power": 2.0,
+    "log_epsilon": 1e-10
+  },
+  "training_preprocessing": {
+    "train_crop": "random",
+    "eval_crop": "center",
+    "short_audio": "zero_pad",
+    "normalization": "training_set_mean_std",
+    "feature_pipeline": "batched_gpu_logmel"
+  },
+  "training": {
+    "seed": 42,
+    "batch_size": 32,
+    "epochs": 20,
+    "learning_rate": 0.001,
+    "weight_decay": 0.0001,
+    "patience": 5,
+    "loss": "class_weighted_cross_entropy",
+    "optimizer": "AdamW",
+    "num_workers": 4,
+    "prefetch_factor": 2,
+    "cudnn_deterministic": true,
+    "cudnn_benchmark": false
+  },
+  "excluded_from_E1": [
+    "environmental_noise",
+    "codec_simulation",
+    "telephony_filtering",
+    "SpecAugment",
+    "robustness_consistency_loss",
+    "knowledge_distillation",
+    "pruning",
+    "quantization",
+    "edge_benchmarking"
+  ]
+}

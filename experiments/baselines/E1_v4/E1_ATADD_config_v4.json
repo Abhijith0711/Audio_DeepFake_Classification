@@ -1,0 +1,77 @@
+{
+  "experiment": "E1-v4",
+  "experiment_version": "v4.0",
+  "input_preprocessing_version": "v4.0_24khz_repeat_pad",
+  "preprocessing_module": "src/preprocessing/preprocess_atadd_v4.py",
+  "dataset_preparation_version": "AT-ADD_manifest_v1",
+  "model": {
+    "name": "MobileNetV3-Small",
+    "weights": "scratch",
+    "input_channels": 1,
+    "num_classes": 2,
+    "total_parameters": 1519618,
+    "trainable_parameters": 1519618
+  },
+  "dataset": {
+    "name": "AT-ADD Track 2",
+    "train_manifest": "data/manifests/train_manifest.csv",
+    "dev_manifest": "data/manifests/dev_manifest.csv",
+    "eval_manifest": "data/manifests/eval_manifest.csv",
+    "train_samples": 46000,
+    "dev_samples": 36536,
+    "eval_samples": 44289,
+    "label_mapping": {
+      "real": 0,
+      "fake": 1
+    },
+    "unseen_generator_eval": true
+  },
+  "audio": {
+    "sample_rate": 24000,
+    "segment_seconds": 4,
+    "num_samples": 96000
+  },
+  "spectrogram": {
+    "n_fft": 1024,
+    "win_length": 600,
+    "hop_length": 240,
+    "n_mels": 80,
+    "window": "hann",
+    "power": 2.0,
+    "log_epsilon": 1e-10,
+    "feature_extraction_device": "cuda"
+  },
+  "training_preprocessing": {
+    "train_crop": "random",
+    "eval_crop": "center",
+    "short_audio": "repeat_pad",
+    "normalization": "training_set_mean_std",
+    "stft_and_mel": "GPU_batched",
+    "feature_normalization": "training_set_global_mean_std"
+  },
+  "training": {
+    "seed": 42,
+    "batch_size": 32,
+    "epochs": 20,
+    "learning_rate": 0.001,
+    "weight_decay": 0.0001,
+    "patience": 5,
+    "loss": "class_weighted_cross_entropy",
+    "optimizer": "AdamW",
+    "num_workers": 4,
+    "pin_memory": true,
+    "cudnn_deterministic": true,
+    "cudnn_benchmark": false
+  },
+  "excluded_from_E1_v4": [
+    "environmental_noise",
+    "codec_simulation",
+    "telephony_filtering",
+    "SpecAugment",
+    "robustness_consistency_loss",
+    "knowledge_distillation",
+    "pruning",
+    "quantization",
+    "edge_benchmarking"
+  ]
+}
