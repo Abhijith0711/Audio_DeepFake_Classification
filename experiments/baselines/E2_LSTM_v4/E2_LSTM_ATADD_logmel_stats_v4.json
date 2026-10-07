@@ -1,0 +1,14 @@
+{
+  "version": "v4.0_24khz_repeat_pad",
+  "mean": -9.191030070182308,
+  "std": 6.850966223389033,
+  "seed": 42,
+  "train_samples": 46000,
+  "sample_rate": 24000,
+  "segment_seconds": 4,
+  "n_fft": 1024,
+  "win_length": 600,
+  "hop_length": 240,
+  "n_mels": 80,
+  "feature_device": "cuda"
+}

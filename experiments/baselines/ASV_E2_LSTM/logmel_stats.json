@@ -1,0 +1,12 @@
+{
+  "version": "v1.0",
+  "mean": -12.369681424332686,
+  "std": 7.411808514902954,
+  "seed": 42,
+  "sample_rate": 16000,
+  "segment_seconds": 4,
+  "n_fft": 1024,
+  "win_length": 400,
+  "hop_length": 160,
+  "n_mels": 80
+}

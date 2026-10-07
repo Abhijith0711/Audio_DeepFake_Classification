@@ -1,0 +1,51 @@
+file_id,type,label,generator,source,label_id,spoof_score,prediction,error_type
+ATADD_T2_Eval_188147.flac,music,fake,SSM-TTM,-,1,3.975192885263823e-05,0,false_negative
+ATADD_T2_Eval_008989.flac,speech,fake,BigVGAN,Common Voice,1,3.975192885263823e-05,0,false_negative
+ATADD_T2_Eval_052637.flac,music,fake,SSM-TTM,-,1,3.975192885263823e-05,0,false_negative
+ATADD_T2_Eval_130057.flac,music,fake,SSM-TTM,-,1,3.99075033783447e-05,0,false_negative
+ATADD_T2_Eval_166260.flac,music,fake,SSM-TTM,-,1,3.99075033783447e-05,0,false_negative
+ATADD_T2_Eval_120424.flac,music,fake,SSM-TTM,-,1,4.006368908449076e-05,0,false_negative
+ATADD_T2_Eval_030526.flac,music,fake,SSM-TTM,-,1,4.006368908449076e-05,0,false_negative
+ATADD_T2_Eval_201838.flac,music,fake,SSM-TTM,-,1,4.006368908449076e-05,0,false_negative
+ATADD_T2_Eval_174502.flac,speech,fake,IndexTTS1.5,AISHELL-3,1,4.006368908449076e-05,0,false_negative
+ATADD_T2_Eval_138031.flac,music,fake,SSM-TTM,-,1,4.006368908449076e-05,0,false_negative
+ATADD_T2_Eval_088170.flac,music,fake,SSM-TTM,-,1,4.006368908449076e-05,0,false_negative
+ATADD_T2_Eval_228237.flac,music,fake,SSM-TTM,-,1,4.022049324703403e-05,0,false_negative
+ATADD_T2_Eval_008394.flac,music,fake,SSM-TTM,-,1,4.022049324703403e-05,0,false_negative
+ATADD_T2_Eval_030014.flac,speech,fake,BigVGAN,Common Voice,1,4.022049324703403e-05,0,false_negative
+ATADD_T2_Eval_067465.flac,music,fake,SSM-TTM,-,1,4.022049324703403e-05,0,false_negative
+ATADD_T2_Eval_150801.flac,music,fake,SSM-TTM,-,1,4.022049324703403e-05,0,false_negative
+ATADD_T2_Eval_161871.flac,music,fake,SSM-TTM,-,1,4.022049324703403e-05,0,false_negative
+ATADD_T2_Eval_004773.flac,speech,fake,BigVGAN,Common Voice,1,4.037790131405927e-05,0,false_negative
+ATADD_T2_Eval_178154.flac,speech,fake,BigVGAN,Common Voice,1,4.037790131405927e-05,0,false_negative
+ATADD_T2_Eval_187441.flac,speech,fake,BigVGAN,Common Voice,1,4.037790131405927e-05,0,false_negative
+ATADD_T2_Eval_037532.flac,music,fake,SSM-TTM,-,1,4.037790131405927e-05,0,false_negative
+ATADD_T2_Eval_200198.flac,speech,fake,BigVGAN,Others,1,4.037790131405927e-05,0,false_negative
+ATADD_T2_Eval_132071.flac,music,fake,SSM-TTM,-,1,4.037790131405927e-05,0,false_negative
+ATADD_T2_Eval_176306.flac,music,fake,SSM-TTM,-,1,4.037790131405927e-05,0,false_negative
+ATADD_T2_Eval_111308.flac,speech,fake,BigVGAN,Common Voice,1,4.037790131405927e-05,0,false_negative
+ATADD_T2_Eval_016203.flac,speech,real,-,Others,0,0.999988317489624,1,false_positive
+ATADD_T2_Eval_060011.flac,speech,real,-,Others,0,0.999981164932251,1,false_positive
+ATADD_T2_Eval_149799.flac,sound,real,-,CompA-R,0,0.9999775886535645,1,false_positive
+ATADD_T2_Eval_053948.flac,speech,real,-,Others,0,0.9999654293060303,1,false_positive
+ATADD_T2_Eval_083999.flac,sound,real,-,CompA-R,0,0.9999641180038452,1,false_positive
+ATADD_T2_Eval_218576.flac,speech,real,-,3D-Speaker,0,0.9999634027481079,1,false_positive
+ATADD_T2_Eval_063998.flac,sound,real,-,CompA-R,0,0.9999094009399414,1,false_positive
+ATADD_T2_Eval_018803.flac,sound,real,-,CompA-R,0,0.9999057054519653,1,false_positive
+ATADD_T2_Eval_060293.flac,sound,real,-,CompA-R,0,0.9999053478240967,1,false_positive
+ATADD_T2_Eval_166179.flac,sound,real,-,AudioCaps,0,0.9998948574066162,1,false_positive
+ATADD_T2_Eval_168639.flac,singing,real,-,M4Singer,0,0.999891996383667,1,false_positive
+ATADD_T2_Eval_072729.flac,sound,real,-,AVQA,0,0.9998701810836792,1,false_positive
+ATADD_T2_Eval_042880.flac,sound,real,-,CompA-R,0,0.9998681545257568,1,false_positive
+ATADD_T2_Eval_009956.flac,speech,real,-,Others,0,0.9998675584793091,1,false_positive
+ATADD_T2_Eval_186172.flac,sound,real,-,CompA-R,0,0.999864935874939,1,false_positive
+ATADD_T2_Eval_025298.flac,speech,real,-,3D-Speaker,0,0.9998568296432495,1,false_positive
+ATADD_T2_Eval_218669.flac,sound,real,-,TUT2016,0,0.9998384714126587,1,false_positive
+ATADD_T2_Eval_205191.flac,speech,real,-,3D-Speaker,0,0.9998144507408142,1,false_positive
+ATADD_T2_Eval_153776.flac,sound,real,-,CompA-R,0,0.9997791647911072,1,false_positive
+ATADD_T2_Eval_004152.flac,sound,real,-,CompA-R,0,0.9997579455375671,1,false_positive
+ATADD_T2_Eval_166288.flac,sound,real,-,CompA-R,0,0.9997393488883972,1,false_positive
+ATADD_T2_Eval_193333.flac,sound,real,-,CompA-R,0,0.9996999502182007,1,false_positive
+ATADD_T2_Eval_046214.flac,sound,real,-,TUT2016,0,0.9996868371963501,1,false_positive
+ATADD_T2_Eval_133712.flac,sound,real,-,CompA-R,0,0.9996787309646606,1,false_positive
+ATADD_T2_Eval_150201.flac,sound,real,-,AVQA,0,0.9996691942214966,1,false_positive

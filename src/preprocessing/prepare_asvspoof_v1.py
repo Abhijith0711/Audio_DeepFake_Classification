@@ -53,7 +53,7 @@ def get_paths(project_root):
 
         "metadata_dir":data_root/"metadata",
         "splits_dir":data_root/"splits",
-        "manifests_dir":data_root/"manifests",
+        "manifests_dir":data_root/"manifests"/"ASVSpoof",
 
         "experiment_dir":project_root/"experiments"/"baselines"/"E1"
     }
