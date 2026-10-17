@@ -110,11 +110,10 @@ wandb/
 *.exe
 
 # ============================================================
-# Local BTP / literature tooling (do not commit vendored libs)
+# Local BTP folder (papers, slides, notes — not part of code PRs)
 # ============================================================
 
-btp/.renderlib/
-btp/btp_r1.zip
+btp/
 
 # ============================================================
 # Generated experiment & results (keep experiments/baselines/)
