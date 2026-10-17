@@ -116,10 +116,11 @@ wandb/
 btp/
 
 # ============================================================
-# Generated experiment & results (keep experiments/baselines/)
+# Generated experiment outputs (keep experiments/baselines/ + results/figures on main)
 # ============================================================
 
-results/
+# Local modular-pipeline logs only — do not remove team baseline PNGs under results/figures/
+results/logs/
 
 experiments/**/best.pt
 experiments/**/last.pt
