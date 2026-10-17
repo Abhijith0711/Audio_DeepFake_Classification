@@ -1,7 +1,0 @@
-{
-  "start_time": "2026-10-17T06:43:10.570961+00:00",
-  "hostname": "TGSL9710.local",
-  "torch_version": "2.14.1",
-  "cuda_device": null,
-  "seed": 42
-}
