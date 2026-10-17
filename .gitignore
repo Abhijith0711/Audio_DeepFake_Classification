@@ -108,3 +108,39 @@ wandb/
 *.so
 *.dll
 *.exe
+
+# ============================================================
+# Local BTP / literature tooling (do not commit vendored libs)
+# ============================================================
+
+btp/.renderlib/
+btp/btp_r1.zip
+
+# ============================================================
+# Generated experiment & results (keep experiments/baselines/)
+# ============================================================
+
+results/
+
+experiments/**/best.pt
+experiments/**/last.pt
+experiments/**/train_log.jsonl
+experiments/**/training_history.csv
+experiments/**/config_resolved.yaml
+experiments/**/eval_metrics_*.json
+experiments/**/eval_predictions_*.csv
+experiments/**/eval_by_type_*.csv
+experiments/**/eval_by_generator_*.csv
+experiments/**/failure_cases_*.csv
+
+# Ad-hoc run folders at experiments/ root (e.g. E1_v4_smoke, E7_M3_...)
+experiments/E1_*/
+experiments/E7_*/
+experiments/E8_*/
+
+# Conditioned audio matrix (large; regenerate locally)
+data/manifests/conditioned/
+
+# IDE / local agent prompts (optional; keep out of shared PRs if desired)
+.cursor/
+docs/proposed/05_MASTER_CURSOR_CODE_GENERATION_PROMPT.md
