@@ -8,6 +8,7 @@ import soundfile as sf
 from tqdm import tqdm
 
 from src.datasets.atadd_manifest_dataset import (
+    DEFAULT_AUDIO_ROOT_NAME,
     audio_path_from_row,
     find_project_root,
     load_manifest_df,
@@ -17,7 +18,14 @@ from src.robustness.conditions import all_training_conditions
 from src.robustness.degrade import degrade, ffmpeg_available
 
 
-def build_matrix(split, out_dir, max_samples=None, sample_rate=24000, segment_seconds=4):
+def build_matrix(
+    split,
+    out_dir,
+    max_samples=None,
+    sample_rate=24000,
+    segment_seconds=4,
+    audio_root_name=DEFAULT_AUDIO_ROOT_NAME,
+):
     project_root = find_project_root()
     manifest_rel = f"data/manifests/{split}_manifest.csv"
     df = load_manifest_df(project_root, manifest_rel, split, max_samples=max_samples)
@@ -31,7 +39,7 @@ def build_matrix(split, out_dir, max_samples=None, sample_rate=24000, segment_se
     conditions = [c for c in all_training_conditions() if c.family != "identity"]
 
     for _, row in tqdm(df.iterrows(), total=len(df), desc=f"condition_matrix_{split}"):
-        clean_path = audio_path_from_row(row, project_root)
+        clean_path = audio_path_from_row(row, project_root, audio_root_name)
 
         if not clean_path.exists():
             continue
@@ -112,9 +120,15 @@ def main():
     parser.add_argument("--split", default="eval", choices=["train", "dev", "eval"])
     parser.add_argument("--out", default="data/manifests/conditioned")
     parser.add_argument("--max-samples", type=int, default=None)
+    parser.add_argument("--audio-root", default=DEFAULT_AUDIO_ROOT_NAME)
     args = parser.parse_args()
 
-    build_matrix(args.split, args.out, max_samples=args.max_samples)
+    build_matrix(
+        args.split,
+        args.out,
+        max_samples=args.max_samples,
+        audio_root_name=args.audio_root,
+    )
 
 
 if __name__ == "__main__":

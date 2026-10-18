@@ -14,6 +14,9 @@ MANIFEST_HINT = (
     "Manifest not found. Run src/datasets/create_btp_dataset.py to build AT-ADD splits under data/manifests/."
 )
 
+DEFAULT_AUDIO_ROOT_NAME = "AT_ADD_BTP"
+_SPLIT_DIRS = ("train", "dev", "eval")
+
 
 def find_project_root(start_path=None):
     start_path = Path(start_path or Path.cwd()).resolve()
@@ -36,8 +39,39 @@ def resolve_manifest_path(project_root, manifest_rel):
     return path
 
 
-def audio_path_from_row(row, project_root):
-    return project_root / "data" / "raw" / "AT_ADD" / str(row["split"]) / str(row["name"])
+def resolve_audio_root(project_root, audio_root_name=None):
+    """Root directory containing train/dev/eval subfolders with FLAC files."""
+    project_root = Path(project_root)
+    name = audio_root_name or DEFAULT_AUDIO_ROOT_NAME
+
+    candidates = [
+        project_root / name,
+        project_root / "data" / "shared" / name,
+    ]
+    if name in ("AT_ADD", "AT_ADD_BTP"):
+        candidates.append(project_root / "data" / "raw" / "AT_ADD")
+
+    for root in candidates:
+        if root.is_dir() and any((root / split).is_dir() for split in _SPLIT_DIRS):
+            return root.resolve()
+
+    tried = ", ".join(str(c) for c in candidates)
+    raise FileNotFoundError(
+        f"Audio root for '{name}' not found. Tried: {tried}. "
+        f"Expected layout: {{root}}/{{train,dev,eval}}/{{filename}}. "
+        f"Set dataset.audio_root in your YAML config."
+    )
+
+
+def audio_root_from_config(config):
+    if not config:
+        return DEFAULT_AUDIO_ROOT_NAME
+    return config.get("dataset", {}).get("audio_root", DEFAULT_AUDIO_ROOT_NAME)
+
+
+def audio_path_from_row(row, project_root, audio_root_name=None):
+    root = resolve_audio_root(project_root, audio_root_name)
+    return root / str(row["split"]) / str(row["name"])
 
 
 def load_manifest_df(project_root, manifest_rel, split_name, max_samples=None):
@@ -73,9 +107,11 @@ class ATADDManifestDataset(Dataset):
         sample_rate=24000,
         segment_seconds=4,
         training=False,
+        audio_root_name=None,
     ):
         self.df = df.reset_index(drop=True)
         self.project_root = Path(project_root)
+        self.audio_root_name = audio_root_name or DEFAULT_AUDIO_ROOT_NAME
         self.sample_rate = sample_rate
         self.segment_seconds = segment_seconds
         self.training = training
@@ -85,12 +121,13 @@ class ATADDManifestDataset(Dataset):
 
     def __getitem__(self, index):
         row = self.df.iloc[index]
-        audio_path = audio_path_from_row(row, self.project_root)
+        audio_path = audio_path_from_row(row, self.project_root, self.audio_root_name)
 
         if not audio_path.exists():
+            root = resolve_audio_root(self.project_root, self.audio_root_name)
             raise FileNotFoundError(
-                f"Missing audio: {audio_path}. Ensure data/raw/AT_ADD is populated "
-                f"(see src/datasets/create_btp_dataset.py or create_atadd_share.py)."
+                f"Missing audio: {audio_path}. Expected files under {root}/{{train,dev,eval}}/ "
+                f"(dataset.audio_root={self.audio_root_name!r})."
             )
 
         waveform = cpu_prepare_waveform(
@@ -129,6 +166,7 @@ def make_dataloader(
     pin_memory=True,
     sample_rate=24000,
     segment_seconds=4,
+    audio_root_name=None,
 ):
     dataset = ATADDManifestDataset(
         df,
@@ -136,6 +174,7 @@ def make_dataloader(
         sample_rate=sample_rate,
         segment_seconds=segment_seconds,
         training=training,
+        audio_root_name=audio_root_name,
     )
 
     loader_kwargs = {

@@ -33,6 +33,7 @@ Desktop.ini
 
 # Raw datasets
 data/raw/
+AT_ADD_BTP/
 
 # Any locally generated/processed audio or dataset copies
 data/processed/

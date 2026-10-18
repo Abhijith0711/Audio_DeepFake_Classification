@@ -8,7 +8,7 @@ import torch
 import yaml
 from tqdm import tqdm
 
-from src.datasets.atadd_manifest_dataset import find_project_root, load_manifest_df
+from src.datasets.atadd_manifest_dataset import audio_root_from_config, find_project_root, load_manifest_df
 from src.evaluation.metrics import calculate_metrics
 from src.evaluation.plotting import save_delta_m_heatmap
 from src.evaluation.eval_runner import build_model_from_checkpoint
@@ -89,10 +89,12 @@ def main():
         labels = []
         types = []
 
+        audio_root_name = audio_root_from_config(config)
+
         for _, row in tqdm(df.iterrows(), total=len(df), desc=f"load_{split}"):
             from src.datasets.atadd_manifest_dataset import audio_path_from_row
 
-            path = audio_path_from_row(row, project_root)
+            path = audio_path_from_row(row, project_root, audio_root_name)
 
             if not path.exists():
                 continue

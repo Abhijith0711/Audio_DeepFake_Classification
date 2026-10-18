@@ -8,6 +8,7 @@ logmel_stats_path: experiments/baselines/E1_v4/E1_ATADD_logmel_stats_v4.json
 
 dataset:
   name: AT-ADD Track 2
+  audio_root: AT_ADD_BTP
   train_manifest: data/manifests/train_manifest.csv
   dev_manifest: data/manifests/dev_manifest.csv
   eval_manifest: data/manifests/eval_manifest.csv
