@@ -9,6 +9,7 @@ import torch
 import yaml
 
 from src.datasets.atadd_manifest_dataset import (
+    audio_root_from_config,
     collate_paired_batch,
     find_project_root,
     load_manifest_df,
@@ -40,7 +41,7 @@ def seed_everything(seed):
     torch.cuda.manual_seed_all(seed)
 
 
-def build_train_loader(config, project_root, mode, max_samples):
+def build_train_loader(config, project_root, mode, max_samples, audio_root_name):
     train_df = load_manifest_df(
         project_root,
         config["dataset"]["train_manifest"],
@@ -62,6 +63,7 @@ def build_train_loader(config, project_root, mode, max_samples):
             pin_memory=train_cfg.get("pin_memory", True),
             sample_rate=config["audio"]["sample_rate"],
             segment_seconds=config["audio"]["segment_seconds"],
+            audio_root_name=audio_root_name,
         )
 
     dataset = PairedRobustnessDataset(
@@ -72,6 +74,7 @@ def build_train_loader(config, project_root, mode, max_samples):
         training=True,
         max_severity=99,
         seed=train_cfg["seed"],
+        audio_root_name=audio_root_name,
     )
 
     loader_kwargs = {
@@ -127,7 +130,8 @@ def main():
     write_run_meta(log_dir, config["training"]["seed"], device)
     save_config_resolved(experiment_dir, config)
 
-    train_loader = build_train_loader(config, project_root, mode, args.max_samples)
+    audio_root_name = audio_root_from_config(config)
+    train_loader = build_train_loader(config, project_root, mode, args.max_samples, audio_root_name)
 
     stats_loader = make_dataloader(
         train_loader.dataset.df if hasattr(train_loader.dataset, "df") else load_manifest_df(
@@ -143,6 +147,7 @@ def main():
         num_workers=config["training"].get("num_workers", 4),
         sample_rate=config["audio"]["sample_rate"],
         segment_seconds=config["audio"]["segment_seconds"],
+        audio_root_name=audio_root_name,
     )
 
     gpu_logmel = build_gpu_logmel(config, device)
@@ -179,6 +184,7 @@ def main():
         num_workers=config["training"].get("num_workers", 4),
         sample_rate=config["audio"]["sample_rate"],
         segment_seconds=config["audio"]["segment_seconds"],
+        audio_root_name=audio_root_name,
     )
 
     frontend = MelFrontend(gpu_logmel, mel_mean, mel_std, device)
@@ -186,15 +192,21 @@ def main():
 
     import torch.nn as nn
 
-    train_df_full = load_manifest_df(
+    # Class weights must reflect the full train split (both labels), not a --max-samples slice.
+    train_df_for_weights = load_manifest_df(
         project_root,
         config["dataset"]["train_manifest"],
         "train",
-        max_samples=args.max_samples,
+        max_samples=None,
     )
-    class_counts = train_df_full["label"].map({"real": 0, "fake": 1}).value_counts().sort_index().values.astype(
-        np.float64
-    )
+    label_ids = train_df_for_weights["label"].map({"real": 0, "fake": 1})
+    class_counts = np.zeros(2, dtype=np.float64)
+    for class_id, count in label_ids.value_counts().items():
+        class_counts[int(class_id)] = float(count)
+    if class_counts.min() <= 0:
+        raise ValueError(
+            "Training manifest must contain both 'real' and 'fake' labels for class-weighted CE."
+        )
     class_weights = class_counts.sum() / (len(class_counts) * class_counts)
     criterion = nn.CrossEntropyLoss(weight=torch.tensor(class_weights, dtype=torch.float32, device=device))
 

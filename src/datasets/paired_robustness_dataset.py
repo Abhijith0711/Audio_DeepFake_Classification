@@ -21,6 +21,7 @@ class PairedRobustnessDataset(Dataset):
         max_severity=99,
         condition_pool=None,
         seed=42,
+        audio_root_name=None,
     ):
         self.base = ATADDManifestDataset(
             df,
@@ -28,6 +29,7 @@ class PairedRobustnessDataset(Dataset):
             sample_rate=sample_rate,
             segment_seconds=segment_seconds,
             training=training,
+            audio_root_name=audio_root_name,
         )
         self.sample_rate = sample_rate
         self.segment_seconds = segment_seconds
@@ -58,7 +60,7 @@ class PairedRobustnessDataset(Dataset):
         return len(self.base)
 
     def _load_segment(self, row, crop_start=None):
-        audio_path = audio_path_from_row(row, self.base.project_root)
+        audio_path = audio_path_from_row(row, self.base.project_root, self.base.audio_root_name)
         waveform = load_audio(audio_path, self.sample_rate)
 
         if len(waveform) >= self.num_samples:
