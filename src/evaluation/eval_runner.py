@@ -6,8 +6,7 @@ import pandas as pd
 import torch
 from tqdm import tqdm
 
-from src.datasets.atadd_manifest_dataset import load_manifest_df
-from src.datasets.atadd_manifest_dataset import make_dataloader
+from src.datasets.atadd_manifest_dataset import audio_root_from_config, load_manifest_df, make_dataloader
 from src.evaluation.metrics import calculate_metrics
 from src.evaluation.plotting import save_confusion, save_roc
 from src.models.ft_rcl_detector import FTRCLDetector
@@ -64,6 +63,7 @@ def run_split_evaluation(
         pin_memory=config["training"].get("pin_memory", device.type == "cuda"),
         sample_rate=config["audio"]["sample_rate"],
         segment_seconds=config["audio"]["segment_seconds"],
+        audio_root_name=audio_root_from_config(config),
     )
 
     try:
