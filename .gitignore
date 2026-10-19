@@ -114,7 +114,7 @@ wandb/
 # Local BTP folder (papers, slides, notes — not part of code PRs)
 # ============================================================
 .zip
-zlearn/
+zLearn/
 btp/
 
 # ============================================================
