@@ -74,7 +74,45 @@ def audio_path_from_row(row, project_root, audio_root_name=None):
     return root / str(row["split"]) / str(row["name"])
 
 
-def load_manifest_df(project_root, manifest_rel, split_name, max_samples=None):
+def _split_sample_seed(base_seed, split_name):
+    return int(base_seed) + sum(ord(c) for c in split_name) * 997
+
+
+def sample_manifest_fraction(df, fraction, seed, split_name):
+    """Stratified random subset by label (reproducible). Keeps at least one row per label."""
+    if fraction is None or fraction >= 1.0:
+        return df.reset_index(drop=True)
+
+    if not 0 < fraction < 1.0:
+        raise ValueError(f"sample fraction must be in (0, 1], got {fraction}")
+
+    split_seed = _split_sample_seed(seed, split_name)
+    parts = []
+
+    for label, group in df.groupby("label", sort=False):
+        n_take = max(1, int(round(len(group) * fraction)))
+        n_take = min(n_take, len(group))
+        label_seed = split_seed + LABEL_MAP.get(str(label), 0) * 17
+        parts.append(group.sample(n=n_take, random_state=label_seed))
+
+    out = pd.concat(parts, ignore_index=True)
+    return out.sample(frac=1, random_state=split_seed).reset_index(drop=True)
+
+
+def resolve_sample_fraction(config, cli_fraction=None):
+    if cli_fraction is not None:
+        return cli_fraction
+    return config.get("dataset", {}).get("sample_fraction")
+
+
+def load_manifest_df(
+    project_root,
+    manifest_rel,
+    split_name,
+    max_samples=None,
+    sample_fraction=None,
+    sample_seed=42,
+):
     path = resolve_manifest_path(project_root, manifest_rel)
     df = pd.read_csv(path)
 
@@ -92,6 +130,9 @@ def load_manifest_df(project_root, manifest_rel, split_name, max_samples=None):
 
     if unknown:
         raise ValueError(f"{split_name} contains unknown labels: {unknown}")
+
+    if sample_fraction is not None and sample_fraction < 1.0:
+        df = sample_manifest_fraction(df, sample_fraction, sample_seed, split_name)
 
     if max_samples is not None:
         df = df.iloc[: max_samples].copy()

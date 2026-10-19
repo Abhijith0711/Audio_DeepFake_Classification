@@ -5,7 +5,7 @@ from pathlib import Path
 import torch
 import yaml
 
-from src.datasets.atadd_manifest_dataset import find_project_root
+from src.datasets.atadd_manifest_dataset import find_project_root, resolve_sample_fraction
 from src.evaluation.eval_runner import compare_to_e1_baseline, run_split_evaluation
 from src.training.run_artifacts import print_metrics_table, setup_run_logging, write_run_meta
 
@@ -19,6 +19,12 @@ def main():
     parser.add_argument("--checkpoint", required=True)
     parser.add_argument("--experiment-id", required=True)
     parser.add_argument("--max-samples", type=int, default=None)
+    parser.add_argument(
+        "--data-fraction",
+        type=float,
+        default=None,
+        help="Fraction of manifest to use (stratified by label), must match training if comparing",
+    )
     args = parser.parse_args()
 
     project_root = find_project_root()
@@ -38,6 +44,9 @@ def main():
 
     checkpoint_path = project_root / args.checkpoint
 
+    sample_fraction = resolve_sample_fraction(config, args.data_fraction)
+    sample_seed = config["training"]["seed"]
+
     metrics, paths = run_split_evaluation(
         config,
         project_root,
@@ -47,6 +56,8 @@ def main():
         figure_dir,
         device,
         max_samples=args.max_samples,
+        sample_fraction=sample_fraction,
+        sample_seed=sample_seed,
     )
 
     print_metrics_table(metrics, title=f"Eval metrics ({args.split})")

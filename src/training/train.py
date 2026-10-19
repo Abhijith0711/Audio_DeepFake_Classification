@@ -14,6 +14,7 @@ from src.datasets.atadd_manifest_dataset import (
     find_project_root,
     load_manifest_df,
     make_dataloader,
+    resolve_sample_fraction,
 )
 from src.datasets.paired_robustness_dataset import PairedRobustnessDataset
 from src.evaluation.eval_runner import compare_to_e1_baseline, run_split_evaluation
@@ -41,12 +42,22 @@ def seed_everything(seed):
     torch.cuda.manual_seed_all(seed)
 
 
-def build_train_loader(config, project_root, mode, max_samples, audio_root_name):
+def build_train_loader(
+    config,
+    project_root,
+    mode,
+    max_samples,
+    audio_root_name,
+    sample_fraction,
+    sample_seed,
+):
     train_df = load_manifest_df(
         project_root,
         config["dataset"]["train_manifest"],
         "train",
         max_samples=max_samples,
+        sample_fraction=sample_fraction,
+        sample_seed=sample_seed,
     )
 
     train_cfg = config["training"]
@@ -100,6 +111,12 @@ def main():
     parser.add_argument("--checkpoint", default=None, help="Skip training; load weights for eval only")
     parser.add_argument("--epochs", type=int, default=None)
     parser.add_argument("--max-samples", type=int, default=None)
+    parser.add_argument(
+        "--data-fraction",
+        type=float,
+        default=None,
+        help="Use this fraction of each split (train/dev/eval), stratified by label. E.g. 0.3",
+    )
     parser.add_argument("--eval-splits", default="eval", help="Comma-separated splits after train")
     args = parser.parse_args()
 
@@ -111,6 +128,16 @@ def main():
     if args.epochs is not None:
         config["training"]["epochs"] = args.epochs
 
+    sample_fraction = resolve_sample_fraction(config, args.data_fraction)
+    sample_seed = config["training"]["seed"]
+    if sample_fraction is not None and sample_fraction < 1.0:
+        config.setdefault("dataset", {})["sample_fraction"] = sample_fraction
+        logger.info(
+            "Using %.1f%% of each manifest split (stratified by label, seed=%s)",
+            sample_fraction * 100,
+            sample_seed,
+        )
+
     experiment_dir = project_root / "experiments" / args.experiment_id
     figure_dir = project_root / "results" / "figures" / args.experiment_id
     log_dir = project_root / "results" / "logs" / args.experiment_id
@@ -118,6 +145,7 @@ def main():
         path.mkdir(parents=True, exist_ok=True)
 
     setup_run_logging(log_dir)
+    save_config_resolved(experiment_dir, config)
 
     seed_everything(config["training"]["seed"])
 
@@ -128,10 +156,17 @@ def main():
         torch.backends.cudnn.benchmark = False
 
     write_run_meta(log_dir, config["training"]["seed"], device)
-    save_config_resolved(experiment_dir, config)
 
     audio_root_name = audio_root_from_config(config)
-    train_loader = build_train_loader(config, project_root, mode, args.max_samples, audio_root_name)
+    train_loader = build_train_loader(
+        config,
+        project_root,
+        mode,
+        args.max_samples,
+        audio_root_name,
+        sample_fraction,
+        sample_seed,
+    )
 
     stats_loader = make_dataloader(
         train_loader.dataset.df if hasattr(train_loader.dataset, "df") else load_manifest_df(
@@ -139,6 +174,8 @@ def main():
             config["dataset"]["train_manifest"],
             "train",
             max_samples=args.max_samples,
+            sample_fraction=sample_fraction,
+            sample_seed=sample_seed,
         ),
         project_root,
         batch_size=config["training"]["batch_size"],
@@ -173,6 +210,8 @@ def main():
         config["dataset"]["dev_manifest"],
         "dev",
         max_samples=args.max_samples,
+        sample_fraction=sample_fraction,
+        sample_seed=sample_seed,
     )
 
     dev_loader = make_dataloader(
@@ -192,12 +231,13 @@ def main():
 
     import torch.nn as nn
 
-    # Class weights must reflect the full train split (both labels), not a --max-samples slice.
     train_df_for_weights = load_manifest_df(
         project_root,
         config["dataset"]["train_manifest"],
         "train",
-        max_samples=None,
+        max_samples=args.max_samples,
+        sample_fraction=sample_fraction,
+        sample_seed=sample_seed,
     )
     label_ids = train_df_for_weights["label"].map({"real": 0, "fake": 1})
     class_counts = np.zeros(2, dtype=np.float64)
@@ -245,6 +285,8 @@ def main():
             figure_dir,
             device,
             max_samples=args.max_samples,
+            sample_fraction=sample_fraction,
+            sample_seed=sample_seed,
         )
 
         print_metrics_table(metrics, title=f"Eval metrics ({split})")
