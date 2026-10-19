@@ -39,6 +39,8 @@ def run_split_evaluation(
     figure_dir,
     device,
     max_samples=None,
+    sample_fraction=None,
+    sample_seed=42,
 ):
     manifest_key = f"{split}_manifest"
     manifest_rel = config["dataset"].get(f"{split}_manifest") or config["dataset"].get(manifest_key)
@@ -50,7 +52,14 @@ def run_split_evaluation(
     elif split == "train":
         manifest_rel = config["dataset"]["train_manifest"]
 
-    df = load_manifest_df(project_root, manifest_rel, split, max_samples=max_samples)
+    df = load_manifest_df(
+        project_root,
+        manifest_rel,
+        split,
+        max_samples=max_samples,
+        sample_fraction=sample_fraction,
+        sample_seed=sample_seed,
+    )
 
     loader = make_dataloader(
         df,
