@@ -135,6 +135,8 @@ experiments/**/eval_by_generator_*.csv
 experiments/**/failure_cases_*.csv
 
 # Ad-hoc run folders at experiments/ root (e.g. E1_v4_smoke, E7_M3_...)
+experiments/**/*.csv
+
 experiments/E1_*/
 experiments/E7_*/
 experiments/E8_*/
