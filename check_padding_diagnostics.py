@@ -17,12 +17,20 @@ import pandas as pd
 import soundfile as sf
 from tqdm.auto import tqdm
 
+from src.datasets.atadd_manifest_dataset import DEFAULT_AUDIO_ROOT_NAME, resolve_audio_root
+
 
 def parse_args():
     parser=argparse.ArgumentParser(description="AT-ADD padding and duration diagnostics.")
     parser.add_argument("--project-root",type=str,default=".")
     parser.add_argument("--segment-seconds",type=float,default=4.0)
     parser.add_argument("--output-dir",type=str,default=None)
+    parser.add_argument(
+        "--audio-root",
+        type=str,
+        default=DEFAULT_AUDIO_ROOT_NAME,
+        help="Dataset folder name under project root (default: AT_ADD_BTP)",
+    )
     return parser.parse_args()
 
 
@@ -51,13 +59,13 @@ def get_duration(path):
         return np.nan
 
 
-def analyze_split(df,split,project_root,target_duration):
+def analyze_split(df,split,project_root,audio_root,target_duration):
     records=[]
 
     for _,row in tqdm(df.iterrows(),total=len(df),desc=f"Analyzing {split}"):
         split_name=str(row["split"])
         filename=str(row["name"])
-        path=project_root/"data"/"raw"/"AT_ADD"/split_name/filename
+        path=audio_root/split_name/filename
 
         duration=get_duration(path)
 
@@ -154,11 +162,11 @@ def compare_train_eval(train_df,eval_df):
     print(comparison.round(2).to_string())
 
 
-def check_missing_files(df,split,project_root):
+def check_missing_files(df,split,audio_root):
     missing=0
 
     for _,row in df.iterrows():
-        path=project_root/"data"/"raw"/"AT_ADD"/str(row["split"])/str(row["name"])
+        path=audio_root/str(row["split"])/str(row["name"])
 
         if not path.exists():
             missing+=1
@@ -171,6 +179,7 @@ def main():
     args=parse_args()
 
     project_root=Path(args.project_root).expanduser().resolve()
+    audio_root=resolve_audio_root(project_root,args.audio_root)
     target_duration=args.segment_seconds
 
     if args.output_dir is None:
@@ -184,6 +193,7 @@ def main():
     print("AT-ADD PADDING AND DURATION DIAGNOSTICS")
     print("="*80)
     print(f"Project root: {project_root}")
+    print(f"Audio root: {audio_root}")
     print(f"Target duration: {target_duration:.2f} seconds")
     print(f"Output directory: {output_dir}")
 
@@ -195,9 +205,9 @@ def main():
         print()
         print(f"Loaded {split} manifest: {len(df)} rows")
 
-        check_missing_files(df,split,project_root)
+        check_missing_files(df,split,audio_root)
 
-        result=analyze_split(df,split,project_root,target_duration)
+        result=analyze_split(df,split,project_root,audio_root,target_duration)
         datasets[split]=result
 
         output_path=output_dir/f"{split}_duration_padding_diagnostics.csv"

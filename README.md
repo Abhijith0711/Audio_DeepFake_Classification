@@ -223,7 +223,7 @@ Evaluation performance across individual audio categories reveals significant do
 
 ---
 
-## Repository Structure
+## Directory Structure
 
 ```
 Audio_DeepFake_Classification/

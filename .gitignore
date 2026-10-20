@@ -33,6 +33,7 @@ Desktop.ini
 
 # Raw datasets
 data/raw/
+AT_ADD_BTP/
 
 # Any locally generated/processed audio or dataset copies
 data/processed/
@@ -110,3 +111,42 @@ wandb/
 *.exe
 # Generated robustness experiment results
 experiments/robustness/full_dev_clean_results/
+
+# ============================================================
+# Local BTP folder (papers, slides, notes — not part of code PRs)
+# ============================================================
+.zip
+zLearn/
+btp/
+
+# ============================================================
+# Generated experiment outputs (keep experiments/baselines/ + results/figures on main)
+# ============================================================
+
+# Local modular-pipeline logs only — do not remove team baseline PNGs under results/figures/
+results/logs/
+
+experiments/**/best.pt
+experiments/**/last.pt
+experiments/**/train_log.jsonl
+experiments/**/training_history.csv
+experiments/**/config_resolved.yaml
+experiments/**/eval_metrics_*.json
+experiments/**/eval_predictions_*.csv
+experiments/**/eval_by_type_*.csv
+experiments/**/eval_by_generator_*.csv
+experiments/**/failure_cases_*.csv
+
+# Ad-hoc run folders at experiments/ root (e.g. E1_v4_smoke, E7_M3_...)
+experiments/**/*.csv
+
+experiments/E1_*/
+experiments/E7_*/
+experiments/E8_*/
+
+# Conditioned audio matrix (large; regenerate locally)
+data/manifests/conditioned/
+
+# IDE / local agent prompts (optional; keep out of shared PRs if desired)
+.cursor/
+docs/proposed/05_MASTER_CURSOR_CODE_GENERATION_PROMPT.md

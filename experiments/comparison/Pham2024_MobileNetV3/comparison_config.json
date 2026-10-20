@@ -1,0 +1,62 @@
+{
+  "experiment": "Pham2024_Comparison",
+  "experiment_version": "pham2024_comp_v1.0",
+  "input_preprocessing_version": "stft_lf_64x64x3_v1.0",
+  "reference_paper": {
+    "title": "Deepfake Audio Detection Using Spectrogram-based Feature and Ensemble of Deep Learning Models",
+    "authors": "Lam Pham, Phat Lam, Truong Nguyen, Huyen Nguyen, Alexander Schindler",
+    "arxiv_id": "2407.01777",
+    "system_id": "C2",
+    "reported_metrics": {
+      "accuracy": 0.59,
+      "f1": 0.67,
+      "auc": 0.52,
+      "eer": 0.48
+    }
+  },
+  "model": {
+    "name": "MobileNetV3-Small",
+    "pretraining": "ImageNet-1K",
+    "input_channels": 3,
+    "num_classes": 2,
+    "total_parameters": 1519906,
+    "trainable_parameters": 1519906
+  },
+  "dataset": {
+    "name": "ASVspoof 2019 Logical Access",
+    "train_samples": 25380,
+    "dev_samples": 24844,
+    "eval_samples": 71237
+  },
+  "audio": {
+    "sample_rate": 16000,
+    "segment_seconds": 2.0,
+    "num_samples": 32000
+  },
+  "preprocessing": {
+    "type": "STFT_Linear_Filterbank_DCT_LFCC",
+    "n_fft": 1024,
+    "win_length": 1024,
+    "hop_length": 512,
+    "n_filters": 64,
+    "channels": [
+      "LFCC_static",
+      "LFCC_delta",
+      "LFCC_delta_delta"
+    ],
+    "tensor_shape": [
+      3,
+      64,
+      64
+    ]
+  },
+  "training": {
+    "seed": 42,
+    "batch_size": 32,
+    "epochs": 20,
+    "learning_rate": 0.0001,
+    "weight_decay": 0.0001,
+    "loss": "class_weighted_cross_entropy",
+    "optimizer": "AdamW"
+  }
+}
