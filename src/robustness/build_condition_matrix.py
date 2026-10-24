@@ -38,6 +38,9 @@ def build_matrix(
 
     conditions = [c for c in all_training_conditions() if c.family != "identity"]
 
+    if any(c.family == "mp3_codec" for c in conditions) and not ffmpeg_available():
+        raise RuntimeError("ffmpeg is required to build the MP3 conditions but was not found on PATH.")
+
     for _, row in tqdm(df.iterrows(), total=len(df), desc=f"condition_matrix_{split}"):
         clean_path = audio_path_from_row(row, project_root, audio_root_name)
 
@@ -55,9 +58,6 @@ def build_matrix(
         source_id = str(row.get("file_id", row["name"]))
 
         for condition in conditions:
-            if condition.family == "mp3_codec" and not ffmpeg_available():
-                continue
-
             spec = condition
             if spec.seed is None:
                 spec = type(condition)(

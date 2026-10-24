@@ -42,6 +42,12 @@ def ft_rcl_loss(
     if criterion is None:
         criterion = nn.CrossEntropyLoss()
 
+    # Loss terms are always computed in FP32, even if the model ran under autocast.
+    logits_clean = logits_clean.float()
+    logits_deg = logits_deg.float()
+    s_clean = s_clean.float()
+    s_deg = s_deg.float()
+
     p_clean = F.softmax(logits_clean, dim=1)[:, 1]
     p_deg = F.softmax(logits_deg, dim=1)[:, 1]
 

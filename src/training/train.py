@@ -257,7 +257,7 @@ def main():
             ckpt = torch.load(project_root / args.checkpoint, map_location=device, weights_only=False)
         except TypeError:
             ckpt = torch.load(project_root / args.checkpoint, map_location=device)
-        trainer.model.load_state_dict(ckpt["model_state_dict"], strict=False)
+        trainer.model.load_state_dict(ckpt["model_state_dict"], strict=True)
         best_path = Path(project_root / args.checkpoint)
         logger.info("Loaded checkpoint from %s", best_path)
     else:
