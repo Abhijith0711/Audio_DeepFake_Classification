@@ -1,0 +1,370 @@
+\chapter{Proposed Methodology}
+\label{ch:methodology}
+
+This chapter describes the system, the data, the degradation simulator, the models and the evaluation protocol. Where an implementation problem found during this revision changes how a result should be read, it is stated in the section it affects and summarised in Section~\ref{sec:audit}.
+
+\section{System overview}
+\label{sec:overview}
+
+The system keeps one compact backbone (MobileNetV3-Small~\cite{howard2019mobilenetv3}) and changes only the training objective. Waveforms are cropped, converted to normalised log-mel features and classified. During robustness training each crop is also degraded and passed through the same network, and coherence losses tie the two outputs together.
+
+\subsection{Design principles}
+
+\begin{itemize}
+  \item \textbf{Same inference graph.} All robustness machinery is used in training. At test time the model computes one mel spectrogram and runs one forward pass.
+  \item \textbf{A clean-trained reference.} Mode~M0 (class-weighted cross-entropy on clean input) uses the same preprocessing, data and architecture as the other modes.
+  \item \textbf{Agreement between views.} A clean clip and a degraded copy of it carry the same label, so their outputs should be similar. Plain augmentation only shows the model degraded data; it does not ask the two outputs to agree.
+\end{itemize}
+
+\input{tikz/methodology_flowchart.tex}
+
+\section{Problem formulation}
+\label{sec:formulation}
+
+Let $x \in \mathbb{R}^{N}$ be a mono waveform with sampling rate $f_s = 24{,}000$\,Hz and fixed length $N = 4 f_s = 96{,}000$ samples (four seconds). The label $y \in \{0,1\}$ indicates real ($0$) or fake ($1$). The classifier produces logits $z \in \mathbb{R}^2$ and probabilities $p = \mathrm{softmax}(z)$. The \textbf{detection score} used for ROC analysis and EER is the fake-class probability $q = p_1$.
+
+For robustness training, a condition $c$ from a finite catalogue defines a waveform-domain operator $g(\cdot\,; c)$. The paired sample $(x, \tilde{x})$ satisfies $\tilde{x} = g(x; c)$ with the same label $y$ and the same temporal crop. Mel extraction $\phi(\cdot)$ is applied \textbf{identically} to both waveforms:
+\begin{equation}
+\mathbf{X} = \phi(x), \qquad \tilde{\mathbf{X}} = \phi(\tilde{x}).
+\label{eq:pair}
+\end{equation}
+Degradation never alters the mel hyperparameters or normalization statistics, which ensures a fair comparison with the clean baseline.
+
+\section{Dataset and evaluation protocol}
+\label{sec:data}
+
+\subsection{AT-ADD Track~2}
+
+AT-ADD Track~2 supplies a real/fake label, the audio type (speech, singing, music, sound) and, for fake clips, the generator~\cite{xie2026atadd}. The training list has 46{,}000 clips (16{,}000 real, 30{,}000 fake), the development list 36{,}536 and the evaluation list 44{,}289, which makes 126{,}825 clips in total. The class ratio in training is about eight real clips to fifteen fake clips and is handled by class weighting (Section~\ref{sec:baseline}). All 5{,}786 evaluation clips that we inspected have a native sampling rate of 16\,kHz (Section~\ref{sec:shortcuts}), and 24\% of the training clips and 29\% of the evaluation clips are shorter than four seconds and therefore need padding (Table~\ref{tab:durations}).
+
+\subsection{Generator overlap between the splits}
+\label{sec:overlap}
+
+The 29 fake generators of the development list are the same 29 as in the training list. The evaluation list has 38 generators, and none of them occurs in training or development. Scores on the official development list are therefore in-generator scores, and only the evaluation list measures generalisation to unseen generators. A validation set that is disjoint in generators can be built by removing a few generators from training; this was not done for the runs reported here (Section~\ref{sec:generator-gap} discusses the consequence).
+
+\subsection{Data used in the reported experiments}
+
+The reported baseline, FT-RCL and STAR-Edge models were trained on a label-stratified subset of 13{,}800 training clips (4{,}800 real, 9{,}000 fake) and validated on a subset of 10{,}961 development clips (1{,}961 real, 9{,}000 fake). They were evaluated on a label-stratified subset of 13{,}287 evaluation clips (1{,}961 real, 11{,}326 fake) that contains clips from all 38 unseen generators. No evaluation clip was used for training or model selection. Table~\ref{tab:dataset-eval} gives the numbers per audio type. The earlier full-data reference runs of Chapter~\ref{ch:prelim} used the complete official lists.
+
+\begin{table}[htbp]
+\centering
+\caption{Clips per audio type in the official lists and in the subsets used for the main comparison (real/fake in the last column).}
+\label{tab:dataset-eval}
+\small
+\begin{tabular}{@{}lrrrr@{}}
+\toprule
+ & Official training & Official evaluation & Evaluation subset & Real / fake in subset \\
+\midrule
+Speech  & 24{,}000 & 27{,}000 & 8{,}083 & 599 / 7{,}484 \\
+Singing & 7{,}000 & 6{,}753 & 2{,}023 & 613 / 1{,}410 \\
+Music   & 8{,}000 & 4{,}536 & 1{,}387 & 160 / 1{,}227 \\
+Sound   & 7{,}000 & 6{,}000 & 1{,}794 & 589 / 1{,}205 \\
+\midrule
+Total   & 46{,}000 & 44{,}289 & 13{,}287 & 1{,}961 / 11{,}326 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Because 85\% of the evaluation clips are fake and 61\% are speech, pooled metrics mostly describe fake speech. For this reason the type-averaged Macro-F1 of the benchmark is reported next to the pooled values.
+
+\section{Audio preprocessing and log-mel frontend}
+\label{sec:frontend}
+
+\subsection{Loading and segmentation}
+
+Clips are resampled to $f_s$ if necessary. A clip longer than four seconds is cropped to length $N$ (random start in training, centre crop in evaluation), and a shorter clip is extended by repeat-padding, i.e.\ the waveform is tiled instead of being followed by zeros. Repeat-padding avoids a silence cue but can create an audible discontinuity at the repeat point, which we did not examine. Music and sound clips are ten seconds long on average, so a centre crop sees less than half of them; scoring a whole recording by averaging over several windows was not tested.
+
+\subsection{Short-time Fourier transform and mel filtering}
+
+With a Hann window $w[n]$, frame length $L_w = 600$ samples (25\,ms), hop $H = 240$ samples (10\,ms), and FFT size $N_{\mathrm{FFT}} = 1024$ (the window is zero-padded to the FFT size),
+\begin{equation}
+X(m,k) = \sum_{n=0}^{L_w-1} x[n + mH]\, w[n]\, e^{-j2\pi kn / N_{\mathrm{FFT}}}, \qquad P(m,k) = |X(m,k)|^2 .
+\label{eq:stft}
+\end{equation}
+Frames are centred using reflection padding, so a four-second segment yields $T_m = 1 + \lfloor N/H \rfloor = 401$ frames. A mel filter bank $\mathbf{W}_{\mathrm{mel}} \in \mathbb{R}^{80 \times 513}$ with 80 bands (Slaney normalization) gives the mel power $\mathbf{P}_{\mathrm{mel}} = \mathbf{W}_{\mathrm{mel}} \mathbf{P}^{\top}$, and the log-mel features are
+\begin{equation}
+\mathbf{L} = \log(\mathbf{P}_{\mathrm{mel}} + \varepsilon), \qquad \varepsilon = 10^{-10}.
+\label{eq:logmel}
+\end{equation}
+
+\subsection{Global normalization}
+
+The mean $\mu$ and standard deviation $\sigma$ are computed on the training split ($\mu \approx -9.19$, $\sigma \approx 6.85$ in the reference baseline) and applied in training and testing:
+\begin{equation}
+\hat{\mathbf{L}} = (\mathbf{L} - \mu) / \sigma .
+\label{eq:norm}
+\end{equation}
+The tensor $\hat{\mathbf{L}}$ is treated as a single-channel image of shape $1 \times 80 \times T_m$ by the CNN (Figure~\ref{fig:mel-frontend}). Since the clips are natively 16\,kHz, resampling to 24\,kHz adds no information above 8\,kHz, and the upper part of the mel axis carries only interpolation residue. We kept the 24\,kHz setting from the preliminary studies and make no claim that it helps.
+
+\input{tikz/mel_frontend_diagram.tex}
+
+\section{Synthetic degradation (paired views)}
+\label{sec:degradation}
+
+\subsection{Degradation catalogue}
+
+Degradations are applied to the waveform before $\phi$. Table~\ref{tab:degradations} lists the catalogue used in training. MP3 coding uses FFmpeg (libmp3lame), additive noise is white Gaussian noise scaled to a target SNR, and the telephony condition is a fourth-order Butterworth band-pass. Each degraded clip records its family, severity and random seed.
+
+Two properties of the catalogue need to be stated. First, the resampling condition (24\,kHz $\rightarrow$ 16\,kHz $\rightarrow$ 24\,kHz) does nothing to this corpus, because the audio is natively 16\,kHz; it is an identity operation, which explains why its measured $\Delta M$ is exactly zero (Section~\ref{sec:robustness-pilot}). Second, in the implementation used for the reported runs, the noise of a deterministic degradation was drawn from the same seed for every clip, so all clips received the same noise waveform. This has been corrected: the seed now depends on the condition and the clip identifier.
+
+\begin{table}[htbp]
+\centering
+\caption{Degradation families and severity levels of the training catalogue.}
+\label{tab:degradations}
+\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+Family & Setting & Severity $\rho$ \\
+\midrule
+Resample & 24\,kHz $\rightarrow$ 16\,kHz $\rightarrow$ 24\,kHz (identity on this corpus) & 1 \\
+MP3 codec & 128 / 64 / 32\,kbps & 2 / 3 / 4 \\
+Additive noise & SNR 20 / 10 / 5\,dB & 2 / 3 / 4 \\
+Telephony & Band-pass 300--3400\,Hz & 3 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The training catalogue and the evaluation conditions are the same families. A test of generalisation therefore needs conditions that were not used in training, for instance AAC, Opus, G.711 telephony, reverberation and packet loss. Such conditions are implemented in the evaluation code but their results are not available (Section~\ref{sec:robustness-pilot}).
+
+\figimage{spectrogram-pairs}{Clean and degraded versions of one evaluation clip as waveform and log-mel spectrogram.}{figures/plots/btp_report/spectrogram_pairs.png}
+
+\subsection{Severity levels and curriculum}
+
+The severity $\rho$ is an ordinal rank used to schedule the curriculum and to scale the gate. It increases within a family as the bitrate or SNR falls, but the ranks of different families are a design choice and not a calibrated quantity: MP3 at 128\,kbps and noise at 20\,dB share rank~2 without being equally damaging. The agreement between assigned rank and measured drop could not be checked because the degraded-audio results are not valid.
+
+Let $\rho_{\max}(e)$ be the largest severity allowed at epoch $e$, with milestones at epochs 6 and 13:
+\begin{equation}
+\rho_{\max}(e) = \begin{cases}
+1 & e < 6, \\
+3 & 6 \le e < 13, \\
+4 & e \ge 13 .
+\end{cases}
+\label{eq:curriculum}
+\end{equation}
+Only conditions with $\rho \le \rho_{\max}(e)$ should be sampled (Figure~\ref{fig:m3-gating}). Two facts limit what this schedule meant in practice. The FT-RCL run stopped at epoch 12 by early stopping, so it never reached the $\rho=4$ stage, and its best checkpoint is from epoch 7. More importantly, the training loader used persistent worker processes, each of which keeps its own copy of the dataset; the severity cap was set in the main process and never reached the workers, so every worker sampled all severities from the first epoch. The curriculum was therefore not in effect in the reported runs. The cap is now kept in shared memory and each worker has its own random stream.
+
+\figimage{m3-gating}{Intended severity curriculum: maximum allowed severity $\rho_{\max}$ versus epoch. In the reported runs the cap did not reach the data-loading workers.}{figures/plots/btp_report/m3_gating_curriculum.png}
+
+The severity factor of the M3 gate (Section~\ref{sec:losses}) is
+\begin{equation}
+\eta(\rho) = \min\!\left(1,\ \frac{\rho}{\rho_{\max}(e)}\right).
+\label{eq:eta}
+\end{equation}
+
+\section{Baseline model (mode M0)}
+\label{sec:baseline}
+
+\subsection{Architecture}
+
+The baseline uses \textbf{MobileNetV3-Small} adapted to single-channel mel input (without ImageNet pre-training) and a two-logit classifier head, giving $1{,}519{,}618$ parameters. The forward pass is $\hat{\mathbf{L}} \mapsto z = f_\theta(\hat{\mathbf{L}})$ (Figure~\ref{fig:mobilenet-baseline}). Depthwise-separable convolutions and inverted bottlenecks keep the cost low. In the backbone comparison of Section~\ref{sec:backbone-study} the CNN head gave a lower EER than a GRU or LSTM head on the same extractor, in single runs. Only variants of this one backbone were tried, and no pretrained model was used, so we do not claim that it is the best small network for the task.
+
+\input{tikz/mobilenet_baseline_diagram.tex}
+
+\subsection{Class-weighted cross-entropy loss}
+
+With class counts $n_0, n_1$ and total $n = n_0 + n_1$, the weights $\omega_j = n / (2 n_j)$ balance the real and fake classes:
+\begin{equation}
+\mathcal{L}_{\mathrm{CE}}(z, y) = -\sum_{j \in \{0,1\}} \omega_j \,\mathbb{1}[y=j]\,\log p_j .
+\label{eq:ce}
+\end{equation}
+For the 16:30 (real:fake) ratio of the official training list this gives $\omega_0 \approx 1.44$ and $\omega_1 \approx 0.77$. Mode \textbf{M0} (clean-only training) minimizes $\mathcal{L}_{\mathrm{CE}}$ on clean batches only.
+
+\section{FT-RCL detector}
+\label{sec:ftrcl}
+
+\subsection{Architecture and subband signatures}
+
+The FT-RCL detector shares the MobileNetV3 backbone and also returns the last feature map $F \in \mathbb{R}^{B \times C \times H \times W}$ with $C=576$ (Figure~\ref{fig:ft-rcl-paired}). The signature module splits the frequency axis into $K=8$ bands. For band $k$ with rows $[h_k, h_{k+1})$,
+\begin{equation}
+b_k = \mathrm{mean}_{h,w}\big(F_{:,:,h_k:h_{k+1},:}\big) \in \mathbb{R}^{B \times C}.
+\label{eq:subband}
+\end{equation}
+The bands are stacked into $s^{(0)} \in \mathbb{R}^{B \times K \times C}$ and normalised along the channel axis:
+\begin{equation}
+s = \mathrm{normalize}\big(s^{(0)},\ p=2,\ \mathrm{dim}=-1\big).
+\label{eq:signature}
+\end{equation}
+
+The question of how eight bands arise from a feature map with few rows has a direct answer: they do not. The backbone reduces frequency resolution by a factor of 32, so an input with 80 mel bins gives $H=3$ rows at the last layer. The implementation used for the reported runs assigned one row to each of the first three bands and left bands four to eight empty. The mean of an empty slice is undefined, so five of the eight signature bands were not-a-number, the logged FTSC and total loss were not-a-number in every epoch (the loss columns of the saved training logs are empty), and the training loss could not be used for monitoring. The gradients were nevertheless finite, because the undefined bands are not connected to the feature map, so training went on and the FTSC term constrained only the first three bands (one row each). We reproduced this behaviour: with the old module the loss is undefined while all parameter gradients are finite. The earlier explanation that the loss was unstable under mixed precision was wrong; the runs used a CPU and no mixed precision (Chapter~\ref{ch:setup}).
+
+The corrected module averages over time and then divides the $H$ rows into $K$ possibly overlapping bins with the boundaries used by adaptive average pooling, so that no band is empty. With $H=3$ the eight bands are still an interpolated view of three rows and not eight independent frequency bands. Taking the feature map from an earlier stage with finer frequency resolution would be a better design and is left for future work. The results of Chapter~\ref{ch:results} come from the old module, so they describe FTSC on three bands.
+
+\input{tikz/ft_rcl_paired_diagram.tex}
+
+\subsection{Loss functions}
+\label{sec:losses}
+
+Let $z_c, z_d$ be the logits from the clean and degraded mel inputs, $q_c, q_d$ the corresponding fake-class probabilities, and $s_c, s_d$ the signatures.
+
+\subsubsection{Dual classification}
+
+With the class-weighted cross-entropy of Equation~\eqref{eq:ce},
+\begin{equation}
+\mathcal{L}_{\mathrm{cls}} = \mathcal{L}_{\mathrm{CE}}(z_c, y) + \beta\,\mathcal{L}_{\mathrm{CE}}(z_d, y), \qquad \beta = 0.5 .
+\label{eq:cls}
+\end{equation}
+
+\subsubsection{Prediction coherence (PC)}
+
+\begin{equation}
+\mathcal{L}_{\mathrm{PC}} = \frac{1}{B}\sum_{i=1}^{B} \big(q_{c,i} - q_{d,i}\big)^2 .
+\label{eq:pc}
+\end{equation}
+If, for one clip, $q_c=0.80$ and $q_d=0.55$, the clip adds $0.0625$ to the sum and pushes the degraded prediction toward the clean one. PC cannot tell right from wrong, since two views can agree on the wrong label. A squared difference of probabilities also has a weak gradient when one of the two outputs is saturated near 0 or 1, which is exactly the case of a confident clean prediction and a collapsed degraded one. A Kullback--Leibler or Jensen--Shannon term on the output distributions does not have this property~\cite{hendrycks2020augmix}; we did not compare them.
+
+\subsubsection{Feature signature coherence (FTSC)}
+
+For band $k$ and sample $i$, let $s_{c,i,k}, s_{d,i,k} \in \mathbb{R}^{C}$ be the L2-normalized band vectors and $\cos_{i,k} = s_{c,i,k}^\top s_{d,i,k}$. FTSC compares the clean and degraded signatures by the cosine similarity along the channel dimension for each band and averages over bands and batch:
+\begin{equation}
+\mathcal{L}_{\mathrm{FTSC}} = \frac{1}{B}\sum_{i=1}^{B} \frac{1}{K}\sum_{k=1}^{K} (1 - \cos_{i,k}).
+\label{eq:ftsc}
+\end{equation}
+Figure~\ref{fig:pc-ftsc} illustrates PC and FTSC.
+
+\figimage{pc-ftsc}{Prediction coherence and feature signature coherence.}{figures/plots/btp_report/pc_ftsc.png}
+
+\subsubsection{Type, confidence, and severity robustness gate}
+
+For sample $i$ with audio type $t_i$, the gate combines a type weight $\alpha_{t_i}$ (defaults: speech and singing $1.0$, music $0.3$, sound $0.5$), a confidence $\kappa_i = 2|q_{c,i} - 0.5|$ (treated as a constant, so no gradient flows through $\kappa$), and the severity factor $\eta(\rho_i)$ of Equation~\eqref{eq:eta}:
+\begin{equation}
+w_i = \alpha_{t_i}\,\kappa_i\,\eta(\rho_i), \qquad \bar{w} = \frac{1}{B}\sum_{i=1}^{B} w_i .
+\label{eq:gate}
+\end{equation}
+The type weights were set by hand to reduce the constraint on the two types where the baseline is weakest; they were not estimated from data and no other values were tried. The confidence term switches the coherence loss off for uncertain clean predictions, which are the samples that probably need it most. Because the batch mean $\bar w$ multiplies the batch-level coherence loss, the gate scales the loss of the whole batch and does not weight individual samples. An ungated variant would show whether the gate matters; it was not run.
+
+\subsection{Total loss and training modes}
+
+The total loss of the full FT-RCL objective (mode M3) is
+\begin{equation}
+\mathcal{L}_{\mathrm{M3}} = \mathcal{L}_{\mathrm{cls}} + \bar{w}\,\Big(\gamma_{\mathrm{pc}}\mathcal{L}_{\mathrm{PC}} + \gamma_{\mathrm{ftsc}}\mathcal{L}_{\mathrm{FTSC}}\Big), \qquad \gamma_{\mathrm{pc}} = 1.0,\ \gamma_{\mathrm{ftsc}} = 0.5 .
+\label{eq:m3}
+\end{equation}
+Table~\ref{tab:modes} summarizes how the four training modes combine the terms of Equations~\eqref{eq:cls}--\eqref{eq:ftsc} and the gate of Equation~\eqref{eq:gate}. Mode~M1 uses $\mathcal{L}_{\mathrm{CE}}(z_d,y)$ only; mode~M2 uses $\mathcal{L}_{\mathrm{cls}} + \bar{w}\,\gamma_{\mathrm{pc}}\mathcal{L}_{\mathrm{PC}}$ with $\eta \equiv 1$ and $\gamma_{\mathrm{ftsc}} = 0$.
+
+\begin{table}[htbp]
+\centering
+\caption{Training modes and their loss components.}
+\label{tab:modes}
+\small
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{@{}llll@{}}
+\toprule
+Mode & Network & Views used in the loss & Loss \\
+\midrule
+M0 & MobileNetV3-Small & Clean & $\mathcal{L}_{\mathrm{CE}}(z_c,y)$ \\
+M1 & FT-RCL detector & Degraded & $\mathcal{L}_{\mathrm{CE}}(z_d,y)$ \\
+M2 & FT-RCL detector & Clean and degraded & $\mathcal{L}_{\mathrm{cls}} + \bar{w}\,\gamma_{\mathrm{pc}}\mathcal{L}_{\mathrm{PC}}$ ($\eta\equiv 1$) \\
+M3 & FT-RCL detector & Clean and degraded & $\mathcal{L}_{\mathrm{cls}} + \bar{w}\,(\gamma_{\mathrm{pc}}\mathcal{L}_{\mathrm{PC}} + \gamma_{\mathrm{ftsc}}\mathcal{L}_{\mathrm{FTSC}})$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{STAR-Edge extension}
+\label{sec:star-edge-method}
+
+STAR-Edge (Severity-Trajectory and Asymmetric Robustness for Edge) adds three terms to FT-RCL. It uses the same backbone, frontend, degradation catalogue and optimisation settings.
+
+\paragraph{Asymmetric bona-fide robustness (ABR).} Genuine recordings suffer most when compression or noise creates artefacts that look like synthesis. For the real clips of a batch ($\mathcal{R}$), ABR penalises degraded views that look more fake than the clean view by more than a margin $m=0.05$:
+\begin{equation}
+\mathcal{L}_{\mathrm{ABR}} = \frac{1}{|\mathcal{R}|}\sum_{i\in\mathcal{R}} \max\big(0,\ q_{d,i}-q_{c,i}+m\big).
+\label{eq:abr}
+\end{equation}
+
+\paragraph{Severity trajectory coherence (STC).} STC adds the signature and probability agreement between consecutive points of a trajectory $(s^{(0)},\ldots,s^{(T)})$:
+\begin{equation}
+\mathcal{L}_{\mathrm{STC}} = \sum_{t=0}^{T-1}\Big[\tfrac{1}{B}\sum_i\big(1-s^{(t)\top}_i s^{(t+1)}_i\big) + \tfrac{1}{B}\sum_i\big(q^{(t)}_i-q^{(t+1)}_i\big)^2\Big].
+\label{eq:stc}
+\end{equation}
+In the implementation the trajectory has only two points, the clean and the degraded view, so STC reduces to a second copy of the pairwise terms of FT-RCL rather than a coherence across several severities. It is applied on a random half of the training steps.
+
+\paragraph{Channel auxiliary detection (CAD).} Four waveform statistics (RMS, crest factor, spectral flatness, zero-crossing rate) are mapped by a small MLP to an eight-dimensional channel code $u$. The pooled embedding $z$ is projected orthogonally to $u$, $z'=z-(z^\top\hat u)\hat u$ with $\hat u=u/\lVert u\rVert$, and a linear head predicts the degradation family of the degraded clip from $u$ with a cross-entropy loss. The code is detached from the projection during the first three epochs.
+
+With weights $\rho_{\mathrm{ABR}}=0.2$ and $\delta_{\mathrm{STC}}=0.3$, the objective is $\mathcal{L}_{\mathrm{M3}}+0.2\,\mathcal{L}_{\mathrm{ABR}}+\mathcal{L}_{\mathrm{CAD}}+0.3\,\mathcal{L}_{\mathrm{STC}}$. Like the other additions, these terms are only used in training. The signature problem described above applies here as well and is worse: with CAD the signature is computed from the projected pooled embedding, which has a single row, so only one of the eight bands was defined.
+
+\section{Optimization and checkpoint selection}
+\label{sec:optimization}
+
+\subsection{Optimiser and schedule}
+
+Training uses AdamW~\cite{loshchilov2019adamw} with learning rate $10^{-3}$ and weight decay $10^{-4}$, batch size 32, at most 20 epochs and early stopping with patience 5 on the selection score. The learning rate follows ReduceLROnPlateau on development Macro-F1 (factor 0.5, patience 2). The runs used a CPU, so no mixed precision was involved.
+
+\subsection{Checkpoint selection}
+\label{sec:selection}
+
+The baseline keeps the epoch with the highest development Macro-F1. FT-RCL and STAR-Edge keep the epoch with the highest robustness-aware score
+\begin{equation}
+J = \mathrm{MacroF1}_{\mathrm{dev,clean}} - \lambda\,\widehat{\Delta \mathrm{F1}}_{\mathrm{dev}}, \qquad \lambda = 0.5 ,
+\label{eq:jscore}
+\end{equation}
+where $\widehat{\Delta \mathrm{F1}}_{\mathrm{dev}}$ is the drop in Macro-F1 under two quick degradations. This makes the comparison unfair in a way that cannot be separated from the method: the models are chosen by different rules. The estimate itself was also unreliable. It used the first five batches of the development list, and the list is sorted by type and label, so these 160 clips were all fake music. Macro-F1 on a single class carries no information about robustness, and the logged $\widehat{\Delta \mathrm{F1}}$ values lie between $-0.03$ and $0.04$ without a trend. In addition the estimate can be negative, in which case $J$ rewards a model for scoring better on degraded than on clean audio. The corrected implementation uses a fixed development subset stratified by type and label, all degradation families and a drop clamped at zero, and the same selection rule is available for every model.
+
+\section{Summary of implementation corrections}
+\label{sec:audit}
+
+Reviewing the code against the results exposed the problems below. The reported results of Chapter~\ref{ch:results} come from the implementation before the corrections, except where stated; the corrections are in the code base.
+
+\begin{enumerate}
+  \item The signature module produced empty bands, so the FTSC term was defined on three bands (one for STAR-Edge) and the logged loss was undefined.
+  \item The severity curriculum did not reach the persistent data-loading workers.
+  \item The estimate of the robustness drop used for checkpoint selection was computed on 160 fake music clips.
+  \item Deterministic degradations used one noise seed for all clips, and a missing codec tool silently returned the clean waveform instead of failing.
+  \item Checkpoints were loaded in a mode that ignores missing or unexpected weights.
+  \item The robustness pilot used the first rows of a sorted list (Section~\ref{sec:robustness-pilot}).
+\end{enumerate}
+
+\section{Training versus inference}
+\label{sec:train-infer}
+
+\textbf{Training (M3)} requires paired degradations, two mel computations, dual logits and signatures, and the full loss $\mathcal{L}_{\mathrm{M3}}$. \textbf{Inference} applies $\phi$ once and performs a single forward pass; signatures and degradations are omitted. This preserves the latency expected of an edge-compatible deployment (Figure~\ref{fig:train-vs-infer}).
+
+\input{tikz/train_vs_infer_diagram.tex}
+
+\section{Evaluation metrics}
+\label{sec:evaluation-metrics}
+
+\subsection{Metrics}
+
+For a clip with label $y \in \{0,1\}$, the model produces logits $z$ and probabilities $p = \mathrm{softmax}(z)$ (Section~\ref{sec:formulation}). The \textbf{detection score} is
+\begin{equation}
+q = p_1 = \frac{e^{z_1}}{e^{z_0} + e^{z_1}} \in [0,1],
+\label{eq:q}
+\end{equation}
+the predicted probability that the clip is fake. For a decision threshold $\tau$, the predicted label is $\hat{y}_\tau = \mathbb{1}[q \ge \tau]$. Unless stated otherwise, $\tau = 0.5$. Let $\mathrm{TP}$, $\mathrm{FP}$, $\mathrm{TN}$, and $\mathrm{FN}$ denote the counts of true positives, false positives, true negatives, and false negatives, with the fake class ($y=1$) as the positive class. The metrics are defined as follows.
+
+\paragraph{Accuracy:} the fraction of correct decisions at threshold $0.5$ on $q$,
+\begin{equation}
+\mathrm{Acc} = \frac{\mathrm{TP} + \mathrm{TN}}{\mathrm{TP} + \mathrm{TN} + \mathrm{FP} + \mathrm{FN}}.
+\label{eq:acc}
+\end{equation}
+
+\paragraph{Macro-F1:} the unweighted mean of the F1 scores of the real and fake classes. For class $c \in \{0,1\}$, with precision $P_c$ and recall $R_c$,
+\begin{equation}
+\mathrm{F1}_c = \frac{2\,P_c R_c}{P_c + R_c}, \qquad
+\mathrm{Macro\text{-}F1} = \tfrac{1}{2}\left(\mathrm{F1}_0 + \mathrm{F1}_1\right),
+\label{eq:macrof1}
+\end{equation}
+where $P_1 = \mathrm{TP}/(\mathrm{TP}+\mathrm{FP})$, $R_1 = \mathrm{TP}/(\mathrm{TP}+\mathrm{FN})$, $P_0 = \mathrm{TN}/(\mathrm{TN}+\mathrm{FN})$, and $R_0 = \mathrm{TN}/(\mathrm{TN}+\mathrm{FP})$. Unless stated otherwise, the overall values are computed over all evaluation clips pooled together.
+
+\paragraph{AUROC:} the area under the ROC curve traced by the score $q$. With the false-positive rate $\mathrm{FPR}(\tau) = \mathrm{FP}/(\mathrm{FP}+\mathrm{TN})$ and the true-positive rate $\mathrm{TPR}(\tau) = \mathrm{TP}/(\mathrm{TP}+\mathrm{FN})$ at threshold $\tau$,
+\begin{equation}
+\mathrm{AUROC} = \int_{0}^{1} \mathrm{TPR}\big(\mathrm{FPR}^{-1}(u)\big)\,du
+= \Pr\big(q_{+} > q_{-}\big) + \tfrac{1}{2}\Pr\big(q_{+} = q_{-}\big),
+\label{eq:auroc}
+\end{equation}
+where $q_{+}$ and $q_{-}$ are the scores of a randomly drawn fake and real clip, respectively.
+
+\paragraph{EER:} the error rate at the operating point where the false-positive and false-negative rates are equal. With $\mathrm{FNR}(\tau) = \mathrm{FN}/(\mathrm{FN}+\mathrm{TP})$, it is computed at the ROC point where $\mathrm{FPR}$ and $\mathrm{FNR}$ are closest,
+\begin{equation}
+\tau^{\ast} = \arg\min_{\tau}\,\big|\mathrm{FPR}(\tau) - \mathrm{FNR}(\tau)\big|, \qquad
+\mathrm{EER} = \tfrac{1}{2}\big(\mathrm{FPR}(\tau^{\ast}) + \mathrm{FNR}(\tau^{\ast})\big).
+\label{eq:eer}
+\end{equation}
+
+\paragraph{AT-ADD Macro-F1:} for each audio type $t \in \mathcal{T} = \{\text{speech}, \text{singing}, \text{music}, \text{sound}\}$, the F1 scores of the real and fake classes are averaged, and the four type-wise scores are then averaged without weighting~\cite{xie2026atadd},
+\begin{equation}
+\mathrm{F1}_{\mathrm{AT\text{-}ADD}} = \frac{1}{|\mathcal{T}|}\sum_{t \in \mathcal{T}} \tfrac{1}{2}\left(\mathrm{F1}_{0}^{(t)} + \mathrm{F1}_{1}^{(t)}\right),
+\label{eq:atadd}
+\end{equation}
+where $\mathrm{F1}_{c}^{(t)}$ is the F1 score of class $c$ computed on the clips of type $t$ only. Two further quantities are reported. Because a deployed detector has one threshold for all types, the per-type results are also given at a single global threshold, taken at the pooled EER point. Calibration is summarised by the expected calibration error over 15 equal-width bins~\cite{guo2017calibration}. Intervals are 95\% percentile intervals of a clip-level bootstrap with 1000 resamples~\cite{efron1993bootstrap}; differences between models use the same resamples, so they are paired. The robustness measure is the drop $\Delta M = M_{\mathrm{clean}}-M_{\mathrm{conditioned}}$; because Macro-F1 at a fixed threshold reacts strongly to a shift in the score distribution, $\Delta$AUROC is the more reliable of the three.
+
+No settings were tuned on evaluation data.

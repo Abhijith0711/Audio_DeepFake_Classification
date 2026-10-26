@@ -95,6 +95,7 @@ class Trainer:
         self.beta = ft_cfg.get("beta", 0.5)
         self.gamma_pc = ft_cfg.get("gamma_pc", 1.0)
         self.gamma_ftsc = ft_cfg.get("gamma_ftsc", 0.5)
+        self.gate = ft_cfg.get("gate", "full")
         self.type_alpha = ft_cfg.get(
             "type_alpha",
             {"speech": 1.0, "singing": 1.0, "music": 0.3, "sound": 0.5},
@@ -200,6 +201,7 @@ class Trainer:
                         gamma_pc=self.gamma_pc if self.mode in ("M2", "M3") else 0.0,
                         gamma_ftsc=self.gamma_ftsc if self.mode == "M3" else 0.0,
                         criterion=criterion,
+                        gate=self.gate,
                     )
 
                     if self.use_star and self.mode == "M3":

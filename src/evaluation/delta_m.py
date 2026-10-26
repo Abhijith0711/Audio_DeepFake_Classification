@@ -5,6 +5,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import torch
+
+from src.device import select_device
 import yaml
 from tqdm import tqdm
 
@@ -60,7 +62,7 @@ def main():
     with (project_root / args.config).open("r", encoding="utf-8") as f:
         config = yaml.safe_load(f)
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = select_device()
     try:
         checkpoint = torch.load(project_root / args.checkpoint, map_location=device, weights_only=False)
     except TypeError:

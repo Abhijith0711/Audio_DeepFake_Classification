@@ -1,0 +1,88 @@
+\chapter{Preliminary Studies}
+\label{ch:prelim}
+
+Before the main comparison, a series of earlier experiments settled the frontend and the backbone. They used the complete official training lists and are reported here because they motivated later choices, not as part of the main evidence. Each configuration was run once.
+
+\section{Frontend study on ASVspoof 2019 LA}
+\label{sec:frontend-study}
+
+Two frontends were compared on the ASVspoof~2019 logical-access evaluation list (71{,}237 clips; 25{,}380 training and 24{,}844 development clips). Setting P1 used 16\,kHz audio, a four-second zero-padded window, a 400-sample frame and a 160-sample hop. Setting P2 used 24\,kHz audio, repeat-padding, a 600-sample frame and a 240-sample hop. Backbone, recipe and seed were identical. The evaluation EER was 6.67\% for P1 and 12.49\% for P2 (Table~\ref{tab:asv-frontend}). In P1 the recall on attack A18 was above 98.6\%, in P2 it was 0.43\%.
+
+The two settings differ in padding, sampling rate, frame length and hop at the same time, so the difference cannot be put down to padding alone. It is in line with the duration shortcut that has been reported for ASVspoof~2019~\cite{muller2021silver}: zero-padded clips let a classifier read the length of the speech. But the experiment does not isolate that effect, and the idea that P2 shows ``true'' discrimination is a hypothesis. ASVspoof~2019 LA is also natively 16\,kHz, so the 24\,kHz setting only up-samples the signal and cannot expose 8--12\,kHz vocoder artefacts. We did not run the single-factor experiments (padding only, sampling rate only) that would settle the question.
+
+\begin{table}[htbp]
+\centering
+\caption{ASVspoof 2019 LA evaluation results of the frontend and head comparison (single runs).}
+\label{tab:asv-frontend}
+\small
+\begin{tabular}{@{}llrrrr@{}}
+\toprule
+Setting & Head & Accuracy & Macro-F1 & AUROC & EER (\%) \\
+\midrule
+P1: 16\,kHz, zero-pad & CNN & 0.909 & 0.820 & 0.9688 & 6.67 \\
+P1: 16\,kHz, zero-pad & CNN + GRU & 0.867 & 0.763 & 0.9599 & 7.55 \\
+P1: 16\,kHz, zero-pad & CNN + LSTM & 0.865 & 0.761 & 0.9666 & 6.82 \\
+P2: 24\,kHz, repeat-pad & CNN & 0.753 & 0.648 & 0.9324 & 12.49 \\
+P2: 24\,kHz, repeat-pad & CNN + GRU & 0.692 & 0.597 & 0.9198 & 13.82 \\
+P2: 24\,kHz, repeat-pad & CNN + LSTM & 0.710 & 0.612 & 0.9310 & 12.59 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+On ASVspoof~2019 the recurrent heads are within about one EER point of the CNN head under both settings. We chose the repeat-padded 24\,kHz frontend for the AT-ADD experiments to avoid the silence cue, knowing that the corpora are natively 16\,kHz and that the larger bandwidth brings no new information.
+
+\section{Backbone study on AT-ADD Track 2}
+\label{sec:backbone-study}
+
+The CNN head (global average pooling) was compared with a one-layer GRU head (1.20\,M parameters)~\cite{cho2014gru} and a one-layer LSTM head (1.29\,M parameters)~\cite{hochreiter1997lstm} with hidden size 128 on the same convolutional extractor, which retains the time axis by pooling over frequency only, in the manner of earlier convolutional-recurrent spoofing detectors~\cite{gomez2019light,chintha2020crnn}. Table~\ref{tab:baseline-architecture-atadd} gives the results on the complete evaluation list. The CNN head has the lowest EER, 2.2 points below the LSTM head and 2.5 points below the GRU head, and the highest accuracy.
+
+\begin{table}[htbp]
+\centering
+\caption{Head comparison on the complete AT-ADD Track~2 evaluation list (full training data, 20 epochs, single run).}
+\label{tab:baseline-architecture-atadd}
+\small
+\begin{tabular}{@{}lccccc@{}}
+\toprule
+Head & Parameters & Accuracy & Macro-F1 & AUROC & EER (\%) \\
+\midrule
+CNN (global average pooling) & 1.52\,M & 0.757 & 0.678 & 0.8750 & 19.92 \\
+CNN + GRU & 1.20\,M & 0.699 & 0.630 & 0.8425 & 22.43 \\
+CNN + LSTM & 1.29\,M & 0.696 & 0.626 & 0.8622 & 22.15 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The CNN's validation Macro-F1 on the official development list was 0.953, against 0.678 on evaluation, a gap discussed in Section~\ref{sec:generator-gap}. The result shows that recurrence gave no gain in these single runs; it does not show that recurrent models are worse in general, and the explanation that they overfit non-stationary audio remains a conjecture. Only a single convolutional extractor was tried, so the CNN head cannot be called optimal either. We kept it as the backbone because it is also the cheapest. A pretrained small audio network could improve the weak music and sound results but was not tried.
+
+\section{Comparison with a published MobileNetV3 system}
+
+Pham et al.~\cite{pham2024deepfake} report an EER of 48\% for an ImageNet-pretrained MobileNetV3 on three-channel linear-filterbank images of two-second slices of ASVspoof~2019 audio. We re-implemented their signal processing and score aggregation and trained with our own recipe (AdamW, cosine learning-rate decay, class-weighted loss, per-bin normalisation). The utterance-level EER was 16.85\% with AUROC 0.9180 (segment level: 17.01\%, 0.9162). The two implementations differ in optimiser, schedule, normalisation and recipe, so the gap to the published figure cannot be assigned to one cause. Likewise, the project baseline in setting P2 (EER 12.49\%) differs from this re-implementation in frontend, duration and sampling rate simultaneously, so the comparison does not show that one frontend is better. Table~\ref{tab:pham_comparison} lists the numbers; the published F1 values are weighted or majority-class scores and are not comparable with our unweighted Macro-F1.
+
+\begin{table}[htbp]
+\centering
+\caption{Published and re-implemented MobileNetV3 systems and the project baselines on the ASVspoof 2019 LA evaluation list.}
+\label{tab:pham_comparison}
+\small
+\resizebox{\textwidth}{!}{
+\begin{tabular}{@{}llcccc@{}}
+\toprule
+System & Frontend & Accuracy (\%) & F1 / Macro-F1 & AUROC & EER (\%) \\
+\midrule
+\multicolumn{6}{@{}l}{\textit{Published~\cite{pham2024deepfake}}} \\
+MobileNetV3 (C2) & linear filterbank, $64{\times}64{\times}3$ & 59.00 & 0.670* & 0.520 & 48.00 \\
+ResNet-18 (C1) & linear filterbank, $64{\times}64{\times}3$ & 49.00 & 0.580* & 0.510 & 47.00 \\
+ConvNeXt-Tiny (C7, 28.6\,M) & linear filterbank, $64{\times}64{\times}3$ & 88.00 & 0.900* & 0.960 & 7.50 \\
+Best ensemble & STFT, CQT, LF, Gammatone & 90.00 & 0.910* & 0.994 & 3.00 \\
+\midrule
+\multicolumn{6}{@{}l}{\textit{Re-implementation (this work)}} \\
+C2, segment level & linear filterbank, $64{\times}64{\times}3$ & 64.95 & 0.564 & 0.9162 & 17.01 \\
+C2, utterance level & linear filterbank, $64{\times}64{\times}3$ & 64.60 & 0.561 & 0.9180 & 16.85 \\
+\midrule
+\multicolumn{6}{@{}l}{\textit{Project baselines}} \\
+P2 (CNN) & 80-mel, 24\,kHz, repeat-pad & 75.32 & 0.648 & 0.9324 & 12.49 \\
+P1 (CNN) & 80-mel, 16\,kHz, zero-pad & 90.90 & 0.820 & 0.9688 & 6.67 \\
+\bottomrule
+\end{tabular}}
+\vspace{2pt}
+\footnotesize *Weighted or majority-class F1 as reported by the authors; ours is unweighted Macro-F1.
+\end{table}
