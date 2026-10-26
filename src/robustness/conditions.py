@@ -31,9 +31,9 @@ def all_training_conditions():
     conditions.append(
         ConditionSpec(
             family="resample",
-            name="down_up_16k",
+            name="down_up_12k",
             severity=1,
-            params={"intermediate_sr": 16000},
+            params={"intermediate_sr": 12000},
         )
     )
 

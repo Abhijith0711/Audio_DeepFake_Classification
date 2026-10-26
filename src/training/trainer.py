@@ -9,6 +9,7 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
+from src.datasets.atadd_manifest_dataset import stratified_indices
 from src.evaluation.metrics import calculate_metrics
 from src.evaluation.plotting import save_training_curves
 from src.models.ft_rcl_detector import FTRCLDetector
@@ -94,6 +95,7 @@ class Trainer:
         self.beta = ft_cfg.get("beta", 0.5)
         self.gamma_pc = ft_cfg.get("gamma_pc", 1.0)
         self.gamma_ftsc = ft_cfg.get("gamma_ftsc", 0.5)
+        self.gate = ft_cfg.get("gate", "full")
         self.type_alpha = ft_cfg.get(
             "type_alpha",
             {"speech": 1.0, "singing": 1.0, "music": 0.3, "sound": 0.5},
@@ -161,11 +163,11 @@ class Trainer:
 
                 self.optimizer.zero_grad(set_to_none=True)
 
+                # Forward passes run under autocast; every loss term is computed in FP32 below.
                 with self.autocast():
                     if self.mode == "M1":
                         x_deg = self.frontend(deg_w)
                         logits, _, _ = self.model(x_deg, waveforms=deg_w, current_epoch=epoch)
-                        loss = criterion(logits, labels)
                     else:
                         x_clean = self.frontend(clean_w)
                         x_deg = self.frontend(deg_w)
@@ -180,46 +182,52 @@ class Trainer:
                             current_epoch=epoch,
                         )
 
-                        loss, _ = ft_rcl_loss(
-                            logits_c,
-                            logits_d,
-                            labels,
-                            sig_c,
-                            sig_d,
-                            types_list,
-                            eta if self.mode == "M3" else 1.0,
-                            self.type_alpha,
-                            beta=self.beta,
-                            gamma_pc=self.gamma_pc if self.mode in ("M2", "M3") else 0.0,
-                            gamma_ftsc=self.gamma_ftsc if self.mode == "M3" else 0.0,
-                            criterion=criterion,
-                        )
+                if self.mode == "M1":
+                    loss = criterion(logits.float(), labels)
+                else:
+                    logits_c, logits_d = logits_c.float(), logits_d.float()
+                    sig_c, sig_d = sig_c.float(), sig_d.float()
 
-                        if self.use_star and self.mode == "M3":
-                            star = self.star_cfg
-                            if star.get("use_abr", True):
-                                p_c = torch.softmax(logits_c, dim=1)[:, 1]
-                                p_d = torch.softmax(logits_d, dim=1)[:, 1]
-                                loss = loss + star.get("rho", 0.2) * abr_loss(p_c, p_d, labels)
+                    loss, _ = ft_rcl_loss(
+                        logits_c,
+                        logits_d,
+                        labels,
+                        sig_c,
+                        sig_d,
+                        types_list,
+                        eta if self.mode == "M3" else 1.0,
+                        self.type_alpha,
+                        beta=self.beta,
+                        gamma_pc=self.gamma_pc if self.mode in ("M2", "M3") else 0.0,
+                        gamma_ftsc=self.gamma_ftsc if self.mode == "M3" else 0.0,
+                        criterion=criterion,
+                        gate=self.gate,
+                    )
 
-                            if star.get("use_cad", False) and self.channel_head is not None:
-                                family_ids = torch.tensor(
-                                    [FAMILY_TO_ID.get(m["condition_family"], 0) for m in meta],
-                                    device=self.device,
-                                    dtype=torch.long,
-                                )
-                                loss = loss + channel_aux_loss(
-                                    self.channel_head(u_d),
-                                    family_ids,
-                                    criterion,
-                                )
+                    if self.use_star and self.mode == "M3":
+                        star = self.star_cfg
+                        p_c = torch.softmax(logits_c, dim=1)[:, 1]
+                        p_d = torch.softmax(logits_d, dim=1)[:, 1]
 
-                            if star.get("use_stc", False) and torch.rand(1).item() < 0.5:
-                                p_c = torch.softmax(logits_c, dim=1)[:, 1]
-                                p_d = torch.softmax(logits_d, dim=1)[:, 1]
-                                loss = loss + star.get("delta", 0.3) * stc_loss([sig_c, sig_d], [p_c, p_d])
+                        if star.get("use_abr", True):
+                            loss = loss + star.get("rho", 0.2) * abr_loss(p_c, p_d, labels)
 
-                        logits = logits_c
+                        if star.get("use_cad", False) and self.channel_head is not None:
+                            family_ids = torch.tensor(
+                                [FAMILY_TO_ID.get(m["condition_family"], 0) for m in meta],
+                                device=self.device,
+                                dtype=torch.long,
+                            )
+                            loss = loss + channel_aux_loss(
+                                self.channel_head(u_d.float()),
+                                family_ids,
+                                criterion,
+                            )
+
+                        if star.get("use_stc", False) and torch.rand(1).item() < 0.5:
+                            loss = loss + star.get("delta", 0.3) * stc_loss([sig_c, sig_d], [p_c, p_d])
+
+                    logits = logits_c
 
             else:
                 waveforms, labels, _meta = batch
@@ -229,7 +237,13 @@ class Trainer:
 
                 with self.autocast():
                     logits = self._forward_clean(waveforms)
-                    loss = criterion(logits, labels)
+
+                loss = criterion(logits.float(), labels)
+
+            if not torch.isfinite(loss):
+                raise FloatingPointError(
+                    f"Non-finite training loss ({loss.item()}) in mode {self.mode}, epoch {epoch}."
+                )
 
             self.scaler.scale(loss).backward()
             self.scaler.step(self.optimizer)
@@ -289,65 +303,59 @@ class Trainer:
         metrics["loss"] = total_loss / max(total_items, 1)
         return metrics, np.asarray(all_labels), np.asarray(all_scores), all_meta
 
+    def _build_delta_cache(self, dev_loader):
+        """Fixed, type/label-stratified dev subset and its degraded copies (built once)."""
+        selection = self.config.get("selection", {})
+        num_samples = int(selection.get("delta_num_samples", 384))
+        dataset = dev_loader.dataset
+        indices = stratified_indices(dataset.df, num_samples, seed=self.config["training"]["seed"])
+        conditions = [c for c in all_training_conditions() if c.family != "identity"]
+        sample_rate = self.config["audio"]["sample_rate"]
+
+        clean, degraded, labels = [], [], []
+
+        for rank, index in enumerate(indices):
+            waveform, label, meta = dataset[index]
+            clean_np = waveform.numpy()
+            deg_np, _ = degrade(
+                clean_np,
+                sample_rate,
+                conditions[rank % len(conditions)],
+                mode="deterministic",
+                source_id=meta["file_id"],
+            )
+            clean.append(clean_np)
+            degraded.append(deg_np)
+            labels.append(int(label))
+
+        return np.stack(clean), np.stack(degraded), np.asarray(labels)
+
+    def _score_waveforms(self, waveforms, batch_size=32):
+        scores = []
+
+        for start in range(0, len(waveforms), batch_size):
+            batch = torch.from_numpy(waveforms[start : start + batch_size]).to(self.device)
+            x = self.frontend(batch)
+            logits = self.model(x) if self.mode == "M0" else self.model(x)[0]
+            scores.extend(torch.softmax(logits.float(), dim=1)[:, 1].cpu().numpy().tolist())
+
+        return scores
+
     @torch.no_grad()
-    def estimate_dev_delta_macro_f1(self, dev_loader, max_batches=5):
-        if self.mode == "M0" or max_batches <= 0:
+    def estimate_dev_delta_macro_f1(self, dev_loader):
+        """Clean-minus-degraded Macro-F1 on a fixed stratified dev subset, clamped at 0."""
+        if self.mode == "M0":
             return 0.0
 
-        conditions = [c for c in all_training_conditions() if c.family != "identity"][:2]
-        clean_scores = []
-        clean_labels = []
-        deg_scores = []
-        deg_labels = []
+        if getattr(self, "_delta_cache", None) is None:
+            self._delta_cache = self._build_delta_cache(dev_loader)
 
-        for batch_idx, batch in enumerate(dev_loader):
-            if batch_idx >= max_batches:
-                break
+        clean, degraded, labels = self._delta_cache
+        self.model.eval()
 
-            waveforms, labels, meta = batch
-            waveforms = waveforms.to(self.device, non_blocking=True)
-            labels = labels.to(self.device, non_blocking=True)
-            x = self.frontend(waveforms)
-
-            if self.mode == "M0":
-                logits = self.model(x)
-            else:
-                logits, _, _ = self.model(x)
-
-            scores = torch.softmax(logits.float(), dim=1)[:, 1]
-            clean_scores.extend(scores.cpu().numpy().tolist())
-            clean_labels.extend(labels.cpu().numpy().tolist())
-
-            degraded = []
-            waveforms_np = waveforms.cpu().numpy()
-
-            for i in range(waveforms_np.shape[0]):
-                cond = conditions[i % len(conditions)]
-                file_id = meta[i]["file_id"] if isinstance(meta, list) else meta["file_id"]
-                deg, _ = degrade(
-                    waveforms_np[i],
-                    self.config["audio"]["sample_rate"],
-                    cond,
-                    mode="deterministic",
-                    source_id=file_id,
-                )
-                degraded.append(deg)
-
-            deg_w = torch.tensor(np.stack(degraded), device=self.device, dtype=torch.float32)
-            x_deg = self.frontend(deg_w)
-
-            if self.mode == "M0":
-                logits_d = self.model(x_deg)
-            else:
-                logits_d, _, _ = self.model(x_deg)
-
-            scores_d = torch.softmax(logits_d.float(), dim=1)[:, 1]
-            deg_scores.extend(scores_d.cpu().numpy().tolist())
-            deg_labels.extend(labels.cpu().numpy().tolist())
-
-        clean_metrics, _ = calculate_metrics(clean_labels, clean_scores)
-        deg_metrics, _ = calculate_metrics(deg_labels, deg_scores)
-        return float(clean_metrics["macro_f1"] - deg_metrics["macro_f1"])
+        clean_metrics, _ = calculate_metrics(labels, self._score_waveforms(clean))
+        deg_metrics, _ = calculate_metrics(labels, self._score_waveforms(degraded))
+        return float(max(0.0, clean_metrics["macro_f1"] - deg_metrics["macro_f1"]))
 
     def fit(self, train_loader, dev_loader, criterion, epochs, patience):
         epochs_without_improvement = 0
@@ -366,10 +374,7 @@ class Trainer:
 
             mean_delta = 0.0
             if self.use_j_score:
-                mean_delta = self.estimate_dev_delta_macro_f1(
-                    dev_loader,
-                    max_batches=self.config.get("selection", {}).get("delta_max_batches", 5),
-                )
+                mean_delta = self.estimate_dev_delta_macro_f1(dev_loader)
 
             j_score = dev_metrics["macro_f1"] - self.lambda_delta * mean_delta
             selection_score = j_score if self.use_j_score else dev_metrics["macro_f1"]

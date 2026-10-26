@@ -1,3 +1,4 @@
+import hashlib
 import logging
 import shutil
 import subprocess
@@ -9,11 +10,18 @@ import librosa
 import numpy as np
 from scipy import signal
 
-from src.robustness.conditions import PIPELINE_VERSION, ConditionSpec, identity_condition
+from src.robustness.conditions import PIPELINE_VERSION, ConditionSpec
 
 logger = logging.getLogger(__name__)
 
 _FFMPEG_AVAILABLE = shutil.which("ffmpeg") is not None
+
+
+def _deterministic_seed(condition: ConditionSpec, source_id: str) -> int:
+    """Per-clip, per-condition seed so noise differs between clips but is reproducible."""
+    base = condition.seed if condition.seed is not None else 42
+    key = f"{base}|{condition.condition_id}|{source_id}".encode("utf-8")
+    return int.from_bytes(hashlib.sha256(key).digest()[:4], "little")
 
 
 def _metadata(source_id: str, condition: ConditionSpec, seed: int) -> dict:
@@ -52,7 +60,9 @@ def _apply_telephony(waveform, sample_rate, low_hz, high_hz):
 
 def _apply_mp3_codec(waveform, sample_rate, bitrate_kbps):
     if not _FFMPEG_AVAILABLE:
-        raise RuntimeError("ffmpeg not available for mp3_codec degradation")
+        raise RuntimeError(
+            "ffmpeg is required for the mp3_codec degradation but was not found on PATH"
+        )
 
     import soundfile as sf
 
@@ -122,7 +132,7 @@ def degrade(
         return waveform.copy(), _metadata(source_id, condition, seed)
 
     if mode == "deterministic":
-        seed = condition.seed if condition.seed is not None else 42
+        seed = _deterministic_seed(condition, source_id)
     else:
         seed = int(np.random.randint(0, 2 ** 31 - 1))
 
@@ -132,11 +142,7 @@ def degrade(
     if condition.family == "resample":
         out = _apply_resample_down_up(out, sample_rate, condition.params["intermediate_sr"])
     elif condition.family == "mp3_codec":
-        try:
-            out = _apply_mp3_codec(out, sample_rate, condition.params["bitrate_kbps"])
-        except RuntimeError as exc:
-            logger.warning("%s — returning identity waveform", exc)
-            condition = identity_condition()
+        out = _apply_mp3_codec(out, sample_rate, condition.params["bitrate_kbps"])
     elif condition.family == "additive_noise":
         out = _apply_additive_noise(out, condition.params["snr_db"], rng)
     elif condition.family == "telephony":

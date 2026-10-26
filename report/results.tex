@@ -1,0 +1,248 @@
+\chapter{Results and Discussion}
+\label{ch:results}
+
+All numbers in this chapter come from the saved evaluation predictions of the three trained models (baseline M0, FT-RCL M3 and STAR-Edge) on the 13{,}287-clip evaluation subset of Section~\ref{sec:data}, which contains clips from all 38 unseen generators. No model was trained for this chapter beyond the runs described in Chapter~\ref{ch:setup}. Each model was trained once, so intervals describe the sampling of evaluation clips and not training variance.
+
+\section{Clean evaluation}
+\label{sec:clean-eval}
+
+Table~\ref{tab:overall} gives the pooled results and the official type-averaged Macro-F1. The type-averaged score is the headline figure, because the pooled Macro-F1 is dominated by fake speech (61\% of the evaluation clips) and is higher than the type-averaged value for every model.
+
+\begin{table}[htbp]
+\centering
+\caption{Clean evaluation on the 13{,}287-clip subset (95\% bootstrap intervals in brackets). The last column is the expected calibration error.}
+\label{tab:overall}
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{adjustbox}{max width=\textwidth}
+\begin{tabular}{@{}lccccc@{}}
+\toprule
+Model & Macro-F1 (pooled) & Type-averaged Macro-F1 & AUROC & EER & ECE \\
+\midrule
+Baseline (M0) & 0.672 [0.663, 0.681] & 0.587 [0.577, 0.598] & 0.852 [0.845, 0.860] & 0.216 [0.207, 0.224] & 0.209 \\
+FT-RCL (M3) & 0.659 [0.649, 0.668] & 0.589 [0.578, 0.600] & 0.843 [0.835, 0.851] & 0.234 [0.225, 0.243] & 0.207 \\
+STAR-Edge & 0.655 [0.646, 0.664] & 0.599 [0.588, 0.609] & 0.866 [0.859, 0.874] & 0.215 [0.206, 0.223] & 0.239 \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\end{table}
+
+For the pairwise comparison the same bootstrap resamples were used for all models (Table~\ref{tab:paired}). FT-RCL is worse than the baseline on pooled Macro-F1, AUROC and EER, with intervals that exclude zero, and is indistinguishable from it on the type-averaged score. STAR-Edge has the same EER as the baseline, a higher AUROC and a higher type-averaged Macro-F1, and a lower pooled Macro-F1.
+
+\begin{table}[htbp]
+\centering
+\caption{Paired differences from the baseline (model minus M0, 95\% bootstrap intervals). For EER a negative value is an improvement.}
+\label{tab:paired}
+\small
+\begin{adjustbox}{max width=\textwidth}
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+Model & $\Delta$ Macro-F1 & $\Delta$ type-averaged Macro-F1 & $\Delta$ AUROC & $\Delta$ EER \\
+\midrule
+FT-RCL (M3) & $-0.013$ [$-0.020$, $-0.006$] & $+0.001$ [$-0.007$, $+0.011$] & $-0.009$ [$-0.016$, $-0.003$] & $+0.018$ [$+0.010$, $+0.027$] \\
+STAR-Edge & $-0.017$ [$-0.024$, $-0.010$] & $+0.011$ [$+0.003$, $+0.020$] & $+0.013$ [$+0.007$, $+0.019$] & $-0.001$ [$-0.009$, $+0.008$] \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\end{table}
+
+Pooled Macro-F1 is measured at the fixed threshold 0.5 and the models differ in how their scores are placed relative to it: at the pooled EER threshold the pooled Macro-F1 values are 0.689 (baseline), 0.670 (FT-RCL) and 0.690 (STAR-Edge). The ordering of the models therefore depends on the metric, which is another reason for reporting several.
+
+The models are poorly calibrated. The expected calibration error is 0.21 for the baseline and FT-RCL and 0.24 for STAR-Edge (Figure~\ref{fig:calibration}); the reliability curves in Figure~\ref{fig:calibration} lie far from the diagonal. The fake share is 65\% in the training subset and 85\% in the evaluation subset, which shifts the best threshold, and thresholds at 0.5 are not meaningful operating points for these models.
+
+\figimage{calibration}{Reliability curves of the three models on the evaluation subset.}{figures/plots/analysis/calibration.png}
+
+\figimagepair{roc-eval}{ROC curves on the evaluation subset.}{%
+figures/plots/E1_v4_btp_p30/roc_eval.png}{Baseline (AUROC 0.852)}{%
+figures/plots/E7_ft_rcl_btp_p30/roc_eval.png}{FT-RCL (AUROC 0.843)}
+
+\section{Results per audio type}
+\label{sec:per-type}
+
+Table~\ref{tab:type} gives the results per audio type, both with each type's own EER threshold and at the single pooled threshold that a type-agnostic deployment would use (Figure~\ref{fig:per-type}). Speech and singing work reasonably: the EER is between 16\% and 21\%, which is a high error rate for a detector and not what we would call usable. Music and sound are close to chance. The baseline's music AUROC is 0.63 and FT-RCL's is 0.55; EERs on these two types range from 0.34 to 0.47.
+
+\begin{table}[htbp]
+\centering
+\caption{Results per audio type. Columns marked ``own'' use the EER threshold of the type, ``global'' columns use the pooled EER threshold. FPR and FNR are at the global threshold.}
+\label{tab:type}
+\small
+\setlength{\tabcolsep}{3.5pt}
+\begin{adjustbox}{max width=\textwidth}
+\begin{tabular}{@{}llccccccc@{}}
+\toprule
+Type & Model & AUROC & EER (own) & Macro-F1 (0.5) & Macro-F1 (global) & FPR & FNR \\
+\midrule
+\multirow{3}{*}{Speech}  & Baseline & 0.909 & 0.162 & 0.695 & 0.717 & 0.282 & 0.095 \\
+ & FT-RCL & 0.905 & 0.179 & 0.665 & 0.682 & 0.254 & 0.129 \\
+ & STAR-Edge & 0.911 & 0.164 & 0.639 & 0.683 & 0.230 & 0.134 \\
+\midrule
+\multirow{3}{*}{Singing} & Baseline & 0.921 & 0.157 & 0.794 & 0.818 & 0.147 & 0.170 \\
+ & FT-RCL & 0.874 & 0.208 & 0.764 & 0.769 & 0.206 & 0.210 \\
+ & STAR-Edge & 0.884 & 0.198 & 0.748 & 0.781 & 0.196 & 0.199 \\
+\midrule
+\multirow{3}{*}{Music}   & Baseline & 0.634 & 0.399 & 0.393 & 0.424 & 0.188 & 0.575 \\
+ & FT-RCL & 0.546 & 0.467 & 0.403 & 0.418 & 0.275 & 0.561 \\
+ & STAR-Edge & 0.669 & 0.383 & 0.449 & 0.489 & 0.250 & 0.455 \\
+\midrule
+\multirow{3}{*}{Sound}   & Baseline & 0.633 & 0.426 & 0.467 & 0.484 & 0.229 & 0.656 \\
+ & FT-RCL & 0.683 & 0.394 & 0.522 & 0.534 & 0.233 & 0.579 \\
+ & STAR-Edge & 0.728 & 0.341 & 0.558 & 0.598 & 0.209 & 0.493 \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\end{table}
+
+\figimage{per-type}{EER with a per-type threshold (left) and Macro-F1 with one global threshold (right), by audio type.}{figures/plots/analysis/per_type.png}
+
+FT-RCL helps on sound and, at fixed threshold, on music, and loses on speech and singing, which is why its type-averaged score ties with the baseline. STAR-Edge is better than the baseline on music and sound and slightly worse on singing, and has the best type-averaged score. At the global threshold, the false-negative rate on music and sound is between 45\% and 66\% for every model, i.e.\ a large share of the fake music and sound clips is accepted as real. On the evaluation subset, the music class has only 160 real clips, so music results rest on very few genuine examples.
+
+\section{Generalisation to unseen generators}
+\label{sec:generators}
+
+The 38 evaluation generators differ widely in difficulty (Figure~\ref{fig:generators}). At the pooled EER threshold the mean fake recall per generator is 0.78 for the baseline and STAR-Edge and 0.76 for FT-RCL; the number of generators with recall below 0.5 is six, five and four for baseline, FT-RCL and STAR-Edge. Speech generators such as CosyVoice~2, DiffGANTTS and VITS are detected almost perfectly. The hardest are music and sound systems: SSM-TTM is not detected at all by the baseline (recall 0.00), Auffusion reaches 0.12, MeanAudio 0.23 and ACE-Step 0.28. The speech vocoder BigVGAN is also hard (0.43 for the baseline, 0.31 for FT-RCL). A detector trained on 29 generators therefore does not extend to recent text-to-music and sound generators, which fits the weak music and sound results above.
+
+\figimage{generators}{Fake recall per unseen generator at the pooled EER threshold, sorted by baseline recall.}{figures/plots/analysis/generators.png}
+
+\section{Development versus evaluation scores}
+\label{sec:generator-gap}
+
+All three models score 0.91--0.93 Macro-F1 on the official development list, against 0.66--0.67 on evaluation (Figure~\ref{fig:dev-eval}). Overfitting to the development set is not the explanation, as the development set was only used to select an epoch. The cause is the composition of the splits (Section~\ref{sec:overlap}): the development list contains exactly the 29 fake generators of the training list, so its Macro-F1 measures in-generator performance, while the 38 evaluation generators are all unseen. The same gap exists for the full-data baseline (development 0.953, evaluation 0.678). A development set with held-out generators is needed for honest model selection; it can be built from the training list by removing a few generators, and would also make the comparison of checkpoint rules meaningful. We did not rerun the experiments with such a split.
+
+\figimage{dev-eval}{Macro-F1 on the official development split (generators shared with training) and on the evaluation subset (unseen generators).}{figures/plots/analysis/dev_vs_eval.png}
+
+\section{Training behaviour}
+\label{sec:training}
+
+Figure~\ref{fig:curves} shows the validation curves. The baseline reached its best validation score at epoch 20, the last one allowed, with a training accuracy of 0.98; its development score may still have been rising and we cannot say what it would have reached with a longer schedule. FT-RCL peaked at epoch 7 and stopped at epoch 12 by early stopping, and STAR-Edge used all 20 epochs. Because the models were trained for different numbers of effective epochs and chosen by different rules (Section~\ref{sec:selection}), part of the differences in Table~\ref{tab:overall} may come from the protocol and not from the objectives. The training-loss column of FT-RCL and STAR-Edge is empty in the saved logs for the reason given in Section~\ref{sec:ftrcl}, so the loss curves of these two models cannot be shown.
+
+\figimage{curves}{Validation Macro-F1 and EER and training accuracy per epoch (official development split).}{figures/plots/analysis/curves.png}
+
+\section{Shortcut cues in AT-ADD}
+\label{sec:shortcuts}
+
+We tested whether simple cues alone predict the label. For about 6{,}000 training and 6{,}000 evaluation clips (stratified by type and label) we computed the native sampling rate, the duration, loudness (RMS and peak level), the amount of silence and the bandwidth (95\% spectral roll-off and high-frequency energy ratio). A gradient-boosting classifier was fitted on each cue group on the training clips and applied to the evaluation clips.
+
+All 5{,}786 sampled evaluation clips, real or fake, have a native sampling rate of 16\,kHz, so the sampling rate carries no information and, as far as we inspected, the corpus has no content above 8\,kHz. Loudness, silence and bandwidth cues give an AUROC between 0.49 and 0.60 on the evaluation clips in Table~\ref{tab:shortcuts}, which is close to chance (Table~\ref{tab:shortcuts}). Duration is different: it predicts the label with an AUROC well \emph{below} 0.5 (0.36 over all types, 0.33 for music and 0.32 for sound), which means that the relation between duration and label learnt on the training list is reversed on the evaluation list. In training the fake sound clips are shorter than the real ones (mean 8.3\,s against 9.9\,s), whereas in evaluation the fake music clips are longer than the real ones (mean 11.3\,s against 10.0\,s). A classifier that learnt ``shorter means fake'' on the training list is therefore wrong on the evaluation list. The cues do not show a shortcut that explains the good development scores; they do show that duration differs between real and fake clips in a way that is not stable across splits, which is a risk for models that see more than four seconds.
+
+\begin{table}[htbp]
+\centering
+\caption{AUROC on the evaluation clips of classifiers that see only one group of cues (trained on the training clips). Values below 0.5 mean that the cue works in the opposite direction on the evaluation list.}
+\label{tab:shortcuts}
+\small
+\begin{adjustbox}{max width=\textwidth}
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+Cue group & All types & Speech & Music & Sound \\
+\midrule
+Native sampling rate & 0.500 & 0.500 & 0.500 & 0.500 \\
+Duration & 0.362 & 0.539 & 0.331 & 0.323 \\
+Loudness & 0.543 & 0.596 & 0.566 & 0.494 \\
+Silence & 0.523 & 0.557 & 0.585 & 0.502 \\
+Bandwidth & 0.512 & 0.519 & 0.517 & 0.519 \\
+All cues together & 0.456 & 0.657 & 0.299 & 0.351 \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\end{table}
+
+\figimage{shortcuts}{AUROC of cue-only classifiers on the evaluation clips (all types and music).}{figures/plots/analysis/shortcuts.png}
+
+Padding is a separate matter. Table~\ref{tab:durations} shows that about 40\% of the speech clips are shorter than four seconds and receive repeat-padding, while music and sound clips are almost all ten seconds long. The padding fraction is similar for real and fake speech, so it is not a label cue in AT-ADD, but the repeat-padded junction can be audible and we did not test its effect on detection.
+
+\begin{table}[htbp]
+\centering
+\caption{Clip durations in the official training and evaluation lists: median in seconds and fraction of clips shorter than four seconds (which are repeat-padded).}
+\label{tab:durations}
+\small
+\begin{adjustbox}{max width=\textwidth}
+\begin{tabular}{@{}llrrrr@{}}
+\toprule
+ & & \multicolumn{2}{c}{Training} & \multicolumn{2}{c}{Evaluation} \\
+\cmidrule(lr){3-4}\cmidrule(lr){5-6}
+Type & Label & Median & $<$4\,s & Median & $<$4\,s \\
+\midrule
+Speech & real / fake & 5.1 / 4.5 & 0.32 / 0.41 & 4.6 / 4.6 & 0.40 / 0.41 \\
+Singing & real / fake & 5.1 / 5.2 & 0.23 / 0.23 & 4.7 / 5.3 & 0.29 / 0.24 \\
+Music & real / fake & 10.0 / 10.0 & 0.00 / 0.00 & 10.0 / 10.0 & 0.00 / 0.00 \\
+Sound & real / fake & 10.0 / 10.0 & 0.00 / 0.00 & 10.0 / 10.0 & 0.06 / 0.01 \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\end{table}
+
+\section{Degraded-audio pilot}
+\label{sec:robustness-pilot}
+
+The earlier version of this report included a conditioned evaluation on 100 clips per model, with the drop in Macro-F1 under resampling, noise and telephony (Table~\ref{tab:delta-m-summary}). On inspection the test is not valid and no conclusion about robustness can be drawn from it, for the following reasons.
+
+\begin{itemize}
+  \item \textbf{The clips are all fake music.} The evaluation code takes the first rows of the evaluation list, and that list is sorted by type and label. The saved output of the pilot contains only the audio type music, and Macro-F1 of a single-class sample is not defined in a useful way.
+  \item \textbf{The zero for resampling is expected.} Every inspected clip is natively 16\,kHz, so the 16\,kHz round trip changes nothing.
+  \item \textbf{The negative drops are an artefact.} A negative $\Delta$Macro-F1 of about $-0.3$ under noise means that the degraded audio was scored better than the clean audio. All clips were given the same noise waveform (Section~\ref{sec:degradation}), which shifts the scores of every clip in one direction; at a fixed threshold of 0.5 and with only fake examples, such a shift raises the fraction of clips called fake and hence the Macro-F1. This is a calibration effect and not robustness.
+  \item \textbf{No MP3 conditions.} The codec tool was not available, and the code silently returned the clean waveform for those conditions in place of failing.
+\end{itemize}
+
+\input{generated/delta_m_table.tex}
+
+The telephony result, in which FT-RCL loses more than the baseline (0.134 against 0.115), is subject to the same objection and should not be read as evidence for or against the method. A valid test needs a type- and label-stratified sample of the whole evaluation list, per-clip noise, AUROC-based drops, the MP3 condition and conditions that were not used in training (AAC, Opus, G.711 telephony, reverberation, packet loss). The evaluation code for this was written, but the degraded-audio results are not available, so hypotheses H1, H2 and H4 remain untested.
+
+\section{STAR-Edge}
+\label{sec:star-edge}
+
+The STAR-Edge model was trained for the full 20 epochs and evaluated like the other two models; its results are in Tables~\ref{tab:overall}--\ref{tab:type}. Relative to the baseline it gives the best AUROC (+0.013, interval excludes zero), the best type-averaged Macro-F1 (+0.011) and the best sound and music results, at an unchanged EER and a lower pooled Macro-F1. The improvement on music and sound is the largest effect in this study. Since the signature terms in STAR-Edge were defined on one band only, and it has additional ABR and CAD terms and a different stopping point from FT-RCL, we cannot attribute the gain to any one component. Without the M1 and M2 ablations and without repeated seeds the effect should be treated as a lead to follow up and not as an established result.
+
+\figimagepair{star-edge-train-dev}{Training progress of STAR-Edge.}{%
+figures/plots/E7_star_edge_btp_p30/dev_macro_f1_auroc.png}{Development Macro-F1 and AUROC}{%
+figures/plots/E7_star_edge_btp_p30/training_loss_accuracy.png}{Training accuracy}
+
+\section{Model size and cost}
+\label{sec:efficiency}
+
+The baseline and the FT-RCL detector have the same 1{,}519{,}618 parameters, and a forward pass for one four-second clip takes 36.7 million multiply-accumulate operations, counted with a profiler on the 80$\times$401 input (the FT-RCL detector adds only a pooling operation to this count). The saved checkpoints are 17.6\,MB, but this is not the deployment size: they also contain the optimiser state. The weights alone take 6.2\,MB in 32-bit floating point. Table~\ref{tab:efficiency} summarises these figures.
+
+\begin{table}[htbp]
+\centering
+\caption{Cost of the network. Latency, peak memory and quantised accuracy were not measured.}
+\label{tab:efficiency}
+\small
+\begin{adjustbox}{max width=\textwidth}
+\begin{tabular}{@{}lrrrr@{}}
+\toprule
+Model & Parameters & MACs per clip & Weights (FP32) & Saved checkpoint \\
+\midrule
+Baseline (M0) & 1{,}519{,}618 & 36.7\,M & 6.2\,MB & 17.6\,MB \\
+FT-RCL (M3) & 1{,}519{,}618 & 36.7\,M & 6.2\,MB & 17.6\,MB \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\end{table}
+
+Whether this satisfies an edge budget cannot be said without measuring batch-one latency including the STFT and mel step, peak memory, INT8 accuracy and, ideally, a run on a phone or single-board computer. We also have no comparison with other ways of reaching a small budget, such as a distilled or pruned larger model or a small task-specific network like AASIST-L (about 85\,k parameters~\cite{jung2022aasist}), so ``lightweight'' is judged here only against the 300\,M-parameter systems of the leaderboard.
+
+\section{Discussion}
+\label{sec:discussion}
+
+\paragraph{Why FT-RCL did not help.} The result is negative and we have no experiment that isolates the reason. Several explanations are consistent with the evidence. The signature loss acted on three bands, one row each, so FTSC was a weak constraint; the curriculum never operated, so there was no gradual introduction of hard degradations; the pairs were trained and chosen with a selection score computed on fake music, which makes checkpoint choice close to random among epochs 7--12; and the prediction coherence term has a weak gradient when one view is saturated. Moreover, FT-RCL differs from the baseline only through degradation-related terms while the evaluation measures clean generalisation to unseen generators, which these terms do not target. In that sense the clean evaluation is not a fair test of the idea, and the degraded-audio evaluation that would be one is missing.
+
+\paragraph{Hypotheses.} Table~\ref{tab:hypotheses} summarises what the evidence says about the hypotheses of Chapter~\ref{ch:introduction}.
+
+\begin{table}[htbp]
+\centering
+\caption{Status of the hypotheses.}
+\label{tab:hypotheses}
+\small
+\begin{adjustbox}{max width=\textwidth}
+\begin{tabular}{@{}lp{3.6cm}p{8cm}@{}}
+\toprule
+ & Status & Evidence \\
+\midrule
+H1 & Not tested & The degraded-audio pilot is invalid (Section~\ref{sec:robustness-pilot}). \\
+H2 & Not tested & Modes M1 and M2 were not run. \\
+H3 & Not met & FT-RCL EER is 1.8 points above the baseline (interval 1.0--2.7); STAR-Edge is level with the baseline. \\
+H4 & Not tested & No valid degraded-audio results; unseen conditions not evaluated. \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\end{table}
+
+\paragraph{What the study supports.} Compact CNN detectors reach an EER of about 16--21\% on speech and singing from unseen generators and are close to chance on music and sound. Development scores from the official split overstate this performance by a wide margin. Under these conditions a small difference between training objectives is within what a single run can resolve for most metrics, with the exception of the AUROC advantage of STAR-Edge and the clean-EER disadvantage of FT-RCL.

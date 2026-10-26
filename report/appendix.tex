@@ -1,0 +1,31 @@
+\chapter{Implementation Details}
+\label{app:details}
+
+\section{Configuration of the reported runs}
+\label{app:config}
+
+The settings of the FT-RCL run were: log-mel preprocessing with repeat-padding at 24\,kHz and mel statistics computed on the official training list; batch size 32, at most 20 epochs, AdamW with learning rate $10^{-3}$ and weight decay $10^{-4}$, early-stopping patience 5, seed 42; selection by the $J$-score with $\lambda=0.5$ on five development batches; $\beta=0.5$, $\gamma_{\mathrm{pc}}=1.0$, $\gamma_{\mathrm{ftsc}}=0.5$; type weights speech and singing 1.0, music 0.3, sound 0.5; curriculum epochs $[1,6,13]$ with severity caps $[1,3,4]$. In the STAR-Edge run the three STAR-Edge switches were on. The complete settings of every run are stored with its results.
+
+\section{Training-loop pseudocode}
+\label{app:pseudo}
+
+The loop for modes M1--M3 (Section~\ref{sec:losses}), with the corrections of Section~\ref{sec:audit}, is:
+
+\begingroup
+\small
+\begin{verbatim}
+for epoch in 1..E:
+  set severity cap from the curriculum (shared with workers)
+  for clean_w, deg_w, y, type, meta in train_loader:
+    if mode == M1:
+      loss = CE(model(mel(deg_w)), y)
+    elif mode in {M2, M3}:
+      zc, sc = model(mel(clean_w))
+      zd, sd = model(mel(deg_w))
+      eta  = mean(severity / cap) if M3 else 1.0
+      loss = dual CE + gate * (PC + FTSC)        # float32
+    stop if loss is not finite
+    backward(loss); AdamW step
+  evaluate on the development subset; keep the best checkpoint
+\end{verbatim}
+\endgroup

@@ -7,7 +7,7 @@ from torch.utils.data import Dataset
 from src.datasets.atadd_manifest_dataset import ATADDManifestDataset, audio_path_from_row
 from src.preprocessing.preprocess_atadd_v4 import load_audio, repeat_pad_audio
 from src.robustness.conditions import ConditionSpec, conditions_for_max_severity, identity_condition
-from src.robustness.degrade import degrade
+from src.robustness.degrade import degrade, ffmpeg_available
 
 
 class PairedRobustnessDataset(Dataset):
@@ -36,25 +36,58 @@ class PairedRobustnessDataset(Dataset):
         self.num_samples = sample_rate * segment_seconds
         self.training = training
         self.project_root = project_root
-        self.rng = random.Random(seed)
+        self.seed = seed
+        # Created lazily inside each DataLoader worker so workers do not share one RNG stream.
+        self._rng = None
 
-        if condition_pool is None:
-            condition_pool = conditions_for_max_severity(max_severity)
+        self._fixed_pool = None
+        if condition_pool is not None:
+            self._fixed_pool = [c for c in condition_pool if c.family != "identity"]
+            self._check_codec_tools(self._fixed_pool)
 
-        self.condition_pool = [c for c in condition_pool if c.family != "identity"]
-        self.max_severity = max_severity
+        # Shared-memory scalar: persistent DataLoader workers keep their own copy of the
+        # dataset, so a plain attribute set in the main process would never reach them.
+        self._max_severity = torch.tensor([int(max_severity)], dtype=torch.long).share_memory_()
+        self._check_codec_tools(self.condition_pool)
+
+    @staticmethod
+    def _check_codec_tools(pool):
+        if any(c.family == "mp3_codec" for c in pool) and not ffmpeg_available():
+            raise RuntimeError(
+                "The condition pool contains MP3 conditions but ffmpeg was not found on PATH. "
+                "Install ffmpeg or pass an explicit condition_pool without mp3_codec."
+            )
+
+    @property
+    def max_severity(self):
+        return int(self._max_severity[0])
+
+    @property
+    def condition_pool(self):
+        if self._fixed_pool is not None:
+            return self._fixed_pool
+
+        return [
+            c
+            for c in conditions_for_max_severity(self.max_severity)
+            if c.family != "identity"
+        ]
+
+    @property
+    def rng(self):
+        if self._rng is None:
+            worker = torch.utils.data.get_worker_info()
+            worker_id = worker.id if worker is not None else 0
+            self._rng = random.Random(self.seed * 1000003 + worker_id)
+        return self._rng
 
     @property
     def df(self):
         return self.base.df
 
     def set_max_severity(self, max_severity):
-        self.max_severity = max_severity
-        self.condition_pool = [
-            c
-            for c in conditions_for_max_severity(max_severity)
-            if c.family != "identity"
-        ]
+        self._max_severity[0] = int(max_severity)
+        self._check_codec_tools(self.condition_pool)
 
     def __len__(self):
         return len(self.base)
@@ -80,10 +113,12 @@ class PairedRobustnessDataset(Dataset):
         row = self.base.df.iloc[index]
         clean_np, crop_start = self._load_segment(row)
 
-        if self.training and self.condition_pool:
-            condition = self.rng.choice(self.condition_pool)
-        elif self.condition_pool:
-            condition = self.condition_pool[index % len(self.condition_pool)]
+        pool = self.condition_pool
+
+        if self.training and pool:
+            condition = self.rng.choice(pool)
+        elif pool:
+            condition = pool[index % len(pool)]
         else:
             condition = identity_condition()
 

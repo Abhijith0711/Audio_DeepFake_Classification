@@ -99,6 +99,30 @@ def sample_manifest_fraction(df, fraction, seed, split_name):
     return out.sample(frac=1, random_state=split_seed).reset_index(drop=True)
 
 
+def stratified_indices(df, num_samples, seed=42, columns=("type", "label")):
+    """Reproducible subset of row positions, balanced across the `columns` strata.
+
+    Manifests are sorted (e.g. the first rows of dev/eval are all music/fake), so taking the
+    first N rows gives a single-class, single-type sample. This draws an equal share from
+    every (type, label) stratum instead.
+    """
+    columns = [c for c in columns if c in df.columns]
+
+    if not columns or num_samples >= len(df):
+        return list(range(len(df)))
+
+    groups = [g.index.to_numpy() for _, g in df.reset_index(drop=True).groupby(columns, sort=True)]
+    rng = np.random.default_rng(seed)
+    per_group = max(1, num_samples // len(groups))
+    picked = []
+
+    for positions in groups:
+        take = min(per_group, len(positions))
+        picked.extend(rng.choice(positions, size=take, replace=False).tolist())
+
+    return sorted(picked)
+
+
 def resolve_sample_fraction(config, cli_fraction=None):
     if cli_fraction is not None:
         return cli_fraction

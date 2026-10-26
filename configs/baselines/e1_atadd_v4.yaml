@@ -41,7 +41,7 @@ training:
 selection:
   use_j_score: false
   lambda_delta: 0.5
-  delta_max_batches: 5
+  delta_num_samples: 384
 
 ft_rcl:
   beta: 0.5
