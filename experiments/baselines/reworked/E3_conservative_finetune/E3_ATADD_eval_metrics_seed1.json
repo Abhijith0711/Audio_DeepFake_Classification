@@ -1,0 +1,17 @@
+{
+  "fixed_threshold_0.5": {
+    "macro_f1": 0.658002859313413,
+    "accuracy": 0.7346293662083135,
+    "auroc": 0.8810504383790004,
+    "eer": 0.2005873628401008,
+    "eer_threshold": 0.13927926123142242
+  },
+  "dev_calibrated_threshold": {
+    "macro_f1": 0.7292750976706062,
+    "accuracy": 0.8355347829032039,
+    "auroc": 0.8810504383790004,
+    "eer": 0.2005873628401008,
+    "eer_threshold": 0.13927926123142242
+  },
+  "calibrated_threshold_value": 0.04
+}

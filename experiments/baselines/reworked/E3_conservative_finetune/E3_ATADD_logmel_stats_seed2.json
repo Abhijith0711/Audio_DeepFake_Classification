@@ -1,0 +1,18 @@
+{
+  "mel_mean": -9.128189839814937,
+  "mel_std": 6.774427281444299,
+  "seed_tag": "seed2",
+  "seed": 1337,
+  "config": {
+    "sample_rate": 24000,
+    "segment_seconds": 4,
+    "n_fft": 1024,
+    "win_length": 600,
+    "hop_length": 240,
+    "n_mels": 80,
+    "train_samples": 60000,
+    "train_manifest_fingerprint": "c06d36f3e86ad33253769fbe969bf40fa8da676b1c9daf2c7d6b894911f4fdc7",
+    "preprocessing": "24khz_repeat_pad_reworked",
+    "stats_max_files": null
+  }
+}

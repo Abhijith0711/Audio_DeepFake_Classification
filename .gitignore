@@ -55,7 +55,7 @@ checkpoints/
 # ============================================================
 # Experiment logs / temporary files
 # ============================================================
-
+data/metadata/all_generators_stats.csv
 # Training logs
 *.log
 
@@ -63,7 +63,7 @@ checkpoints/
 runs/
 tensorboard/
 wandb/
-
+issues
 # Temporary experiment files
 *.tmp
 *.temp
@@ -118,6 +118,7 @@ experiments/robustness/full_dev_clean_results/
 .zip
 zLearn/
 btp/
+scratch
 
 # ============================================================
 # Generated experiment outputs (keep experiments/baselines/ + results/figures on main)
