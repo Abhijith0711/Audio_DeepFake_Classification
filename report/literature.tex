@@ -1,0 +1,66 @@
+\chapter{Literature Review}
+\label{ch:literature}
+
+The review starts with speech spoofing benchmarks and moves to all-type detection, compact detectors, robustness to channel changes, consistency regularisation, shortcut learning and model compression. It ends with the gap that this project works on.
+
+\section{From speaker verification to deepfake detection}
+
+Work on fake audio began with attacks on speaker-verification systems. Replay, synthesis and voice conversion led to the ASVspoof challenges and to the EER as the main metric~\cite{kinnunen2017detection,wang2020asvspoof}. ASVspoof~2019 fixed a logical-access protocol for synthetic and converted speech~\cite{wang2020asvspoof}, and ASVspoof~5 later added crowdsourced recordings, adversarial attacks and codec conditions~\cite{wang2025asvspoof5}. Surveys describe how the problem has spread to singing, music and environmental sound~\cite{shaaban2023ieeeAccess,zhang2025sensorsSurvey,alnaqbi2026systematic,nguyenle2026deepfakeSurvey}. They also report that mel-spectrogram CNNs remain a common baseline~\cite{shaaban2023ieeeAccess,mcuba2023deeplearning} and that the most accurate systems use self-supervised encoders, at a much higher computational cost~\cite{li2024sonar}. WaveFake and FakeSound add data for neural vocoders and general audio~\cite{frank2021wavefake,xie2024fakesound}.
+
+\section{All-type benchmarks}
+
+AT-ADD evaluates speech, singing, music and environmental sound together under realistic distortions~\cite{xie2026atadd}. Its Track~2 Macro-F1 averages the real and fake F1 scores inside each type and then averages over the four types, so good speech performance alone is not enough. The leading systems combine self-supervised encoders~\cite{xie2026atadd,fan2026dualssl} or use audio large language models with frequency-time reasoning~\cite{xie2026ftgrpo,gu2025allm4add}. Cross-domain and in-the-wild studies show that detectors lose a lot of accuracy when the recording conditions change~\cite{li2024crossdomain,muller2022generalize}.
+
+\section{Compact detectors and frontends}
+
+Several small detectors exist for speech. Light CNNs work on LFCC features~\cite{lavrentyeva2019stc}, RawNet2 works on the raw waveform~\cite{tak2021rawnet2}, AASIST uses graph attention with a very small parameter count~\cite{jung2022aasist}, and SpecRNet was designed for fast inference~\cite{kawa2022specrnet}. Pham et al.\ fine-tune ImageNet-pretrained vision networks, including MobileNetV3~\cite{howard2019mobilenetv3}, on linear-filterbank images~\cite{pham2024deepfake}. A comparison of feature types found that the best choice depends on the network~\cite{mcuba2023deeplearning}. These works use speech data and clean test audio, and they report parameter counts but not measured latency. Table~\ref{tab:related} lists them next to this work.
+
+\begin{table}[htbp]
+\centering
+\caption{Representative detectors. Sizes are the approximate values given in the cited papers; ``--'' means we could not find a figure.}
+\label{tab:related}
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{adjustbox}{max width=\textwidth}
+\begin{tabular}{@{}p{2.4cm}p{2.3cm}p{1.8cm}p{2.5cm}p{1.7cm}p{1.6cm}p{2.3cm}@{}}
+\toprule
+Method & Input & Size & Data & Robustness tested & Edge tested & Limitation \\
+\midrule
+LCNN~\cite{lavrentyeva2019stc} & LFCC / spectrogram & -- & ASVspoof 2019 & No & No & Speech only \\
+RawNet2~\cite{tak2021rawnet2} & Raw waveform & about 25\,M & ASVspoof 2019 & No & No & Large, speech only \\
+AASIST-L~\cite{jung2022aasist} & Raw waveform & about 85\,k & ASVspoof 2019 & No & Size only & Speech only \\
+SpecRNet~\cite{kawa2022specrnet} & LFCC & about 250\,k & ASVspoof 2019, WaveFake & No & Size, speed & Speech only \\
+Pham et al.~\cite{pham2024deepfake} & Filterbank images & 1.5\,M & ASVspoof 2019 & No & No & Speech only \\
+XLS-R + SLS~\cite{zhang2024sls} & Raw (SSL) & about 300\,M & ASVspoof 2021, In-the-Wild & Partly & No & Too large \\
+Audio LLMs~\cite{xie2026ftgrpo,gu2025allm4add} & Waveform & billions & AT-ADD, ADD sets & Partly & No & Too large \\
+This work & 80-bin log-mel & 1.52\,M & AT-ADD Track~2 & Training degradations (pilot invalid) & Size, MACs & One backbone, one seed \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\end{table}
+
+\section{Robustness to compression, noise and channel change}
+
+Surveys agree that detectors react strongly to codecs, band-limiting, reverberation and noise~\cite{zhang2025sensorsSurvey,alnaqbi2026systematic}. The usual remedy is augmentation. RawBoost applies convolutive and impulsive noise and coloured additive noise to the raw waveform and improves anti-spoofing generalisation~\cite{tak2022rawboost}, and SpecAugment masks regions of the spectrogram~\cite{park2019specaugment}. In the ADD~2022 challenge a fine-tuned wav2vec~2.0 system dealt with low-quality and compressed audio~\cite{martindonas2022vicomtech}. Datasets of perturbed voices and cross-domain collections were built to measure robustness~\cite{gao2024p2v,li2024crossdomain}, and adversarial attacks show further weaknesses~\cite{rabhi2024adversarial}. None of these papers asks whether an explicit agreement loss between a clean clip and its degraded copy helps beyond what augmentation already gives a small network.
+
+\section{Consistency regularisation}
+
+Consistency regularisation penalises differences between a model's outputs for perturbed versions of the same input. It is the basis of temporal ensembling~\cite{laine2017temporal}, unsupervised data augmentation~\cite{xie2020uda} and FixMatch~\cite{sohn2020fixmatch}, and the Jensen--Shannon consistency term of AugMix improves robustness to corruptions~\cite{hendrycks2020augmix}. FT-RCL uses the same idea for supervised detection and differs in two ways: agreement is also required between band-wise internal features, and the weight of the constraint depends on audio type, confidence and severity. Whether these two differences matter is a question for ablation, and the ablation runs are not yet available (Chapter~\ref{ch:results}).
+
+\section{Shortcut learning in spoofing corpora}
+
+M\"uller et al.\ found that models trained on ASVspoof~2019 relied on the length of leading and trailing silence and not on spoofing artefacts~\cite{muller2021silver}. Shortcuts of this kind give good in-corpus scores and fail when conditions change. Section~\ref{sec:shortcuts} runs a similar check on AT-ADD.
+
+\section{Efficient inference}
+
+Smaller networks such as MobileNetV3~\cite{howard2019mobilenetv3}, knowledge distillation~\cite{hinton2015distilling} and 8-bit quantisation~\cite{jacob2018quantization} are the usual routes to edge budgets, and pretrained audio networks such as PANNs have compact variants~\cite{kong2020panns}. For deepfake detection these routes are rarely evaluated with measured latency, memory or quantised accuracy.
+
+\section{Research gap}
+
+\begin{enumerate}
+  \item Compact detectors are almost always tested on speech. Their behaviour on music and environmental sound is largely undocumented.
+  \item Robustness is pursued through augmentation, and the added value of agreement losses over an augmented baseline has not been isolated.
+  \item Edge suitability is argued from parameter counts, and measured cost is seldom reported.
+  \item Validation sets that share generators with the training data hide generalisation failures.
+\end{enumerate}
+This project looks at the second point for a fixed backbone and, because of the size of the available evidence, mainly provides a careful account of the first, third and fourth.

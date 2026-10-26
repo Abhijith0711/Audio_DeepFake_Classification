@@ -1,0 +1,68 @@
+\chapter{Experimental Setup}
+\label{ch:setup}
+
+\section{Compute and software}
+
+The run metadata of the main experiments records PyTorch 2.14.1 and no CUDA device, so training and evaluation ran on the CPU of a laptop-class machine, in 32-bit floating point and without mixed precision. This corrects an earlier statement that the experiments used mixed-precision training on a GPU. Audio was decoded with SoundFile and resampled with librosa; MP3 coding for the degradations uses FFmpeg. The full-data reference runs of Chapter~\ref{ch:prelim} were configured for GPU feature extraction. Seeds were fixed (42) and each configuration was trained once.
+
+\section{Training budget}
+
+Each of the three main models was trained on the subset of 13{,}800 training clips described in Section~\ref{sec:data}, for at most 20 epochs with early stopping (patience 5). The baseline reached its best validation score at epoch 20, the last epoch allowed, so it had probably not converged. The FT-RCL run stopped after epoch 12 and its best checkpoint is from epoch 7; STAR-Edge used all 20 epochs. With one seed per configuration, differences between models include training variance that the bootstrap intervals of Chapter~\ref{ch:results} do not capture, since those intervals describe only the sampling of evaluation clips.
+
+\section{Hyper-parameters}
+
+\begin{table}[htbp]
+\centering
+\caption{Training configuration of the main comparison.}
+\label{tab:hyper}
+\small
+\begin{adjustbox}{max width=\textwidth}
+\begin{tabular}{@{}ll@{}}
+\toprule
+Parameter & Value \\
+\midrule
+Backbone & MobileNetV3-Small, trained from scratch, 1{,}519{,}618 parameters \\
+Input & 4\,s, 24\,kHz, 80-bin log-mel (window 600, hop 240, FFT 1024) \\
+Optimiser & AdamW, learning rate $10^{-3}$, weight decay $10^{-4}$ \\
+Learning-rate schedule & ReduceLROnPlateau on development Macro-F1 (factor 0.5, patience 2) \\
+Batch size, epochs, patience, seed & 32, 20, 5, 42 \\
+FT-RCL coefficients & $\beta=0.5$, $\gamma_{\mathrm{pc}}=1.0$, $\gamma_{\mathrm{ftsc}}=0.5$, $K=8$ \\
+Type weights $\alpha_t$ & speech 1.0, singing 1.0, sound 0.5, music 0.3 \\
+Curriculum & epochs $[1,6,13]\rightarrow$ severity cap $[1,3,4]$ (not in effect, Section~\ref{sec:degradation}) \\
+Checkpoint rule & Baseline: development Macro-F1. FT-RCL, STAR-Edge: $J$-score \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\end{table}
+
+\section{Catalogue of experiments}
+
+Every experiment mentioned in this report is listed in Table~\ref{tab:catalogue}. The numbering is continuous; the version numbers used in earlier drafts were internal labels and are not used here.
+
+\begin{table}[htbp]
+\centering
+\caption{Experiments reported in this work.}
+\label{tab:catalogue}
+\small
+\begin{adjustbox}{max width=\textwidth}
+\begin{tabular}{@{}p{1.1cm}p{6.3cm}p{6.6cm}@{}}
+\toprule
+ID & Purpose & Data and setting \\
+\midrule
+P1 & CNN, zero-padded 16\,kHz frontend on ASVspoof~2019 LA & Official lists, 20 epochs \\
+P2 & CNN, repeat-padded 24\,kHz frontend on ASVspoof~2019 LA & Official lists, 20 epochs \\
+P3 & GRU and LSTM heads under the settings of P1 and P2 & Official lists, 20 epochs \\
+P4 & Re-implementation of a published MobileNetV3 system & ASVspoof~2019 LA \\
+A1 & CNN, GRU and LSTM heads on AT-ADD Track~2 & Official lists, full training data, 20 epochs \\
+M0 & Clean-trained baseline & Training subset of 13{,}800 clips, evaluation subset of 13{,}287 clips \\
+M3 & FT-RCL (full objective) & As M0 \\
+S & STAR-Edge & As M0 \\
+R & Degraded-audio pilot on the baseline and FT-RCL & Fake music clips only (not valid) \\
+C & Shortcut-cue analysis & About 6{,}000 training and 6{,}000 evaluation clips \\
+D & Duration and padding statistics & All 126{,}825 clips \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\end{table}
+
+Modes M1 and M2 of Table~\ref{tab:modes} are defined but were not run.

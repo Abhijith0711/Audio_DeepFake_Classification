@@ -24,7 +24,7 @@ def build_model_from_checkpoint(checkpoint, device):
     else:
         model = FTRCLDetector(num_classes=2, use_cad=bool(star.get("use_cad", False)))
 
-    model.load_state_dict(checkpoint["model_state_dict"], strict=False)
+    model.load_state_dict(checkpoint["model_state_dict"], strict=True)
     model.to(device)
     model.eval()
     return model, mode

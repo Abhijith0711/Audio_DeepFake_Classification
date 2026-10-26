@@ -3,6 +3,8 @@ import logging
 from pathlib import Path
 
 import torch
+
+from src.device import select_device
 import yaml
 
 from src.datasets.atadd_manifest_dataset import find_project_root, resolve_sample_fraction
@@ -39,7 +41,7 @@ def main():
     log_dir.mkdir(parents=True, exist_ok=True)
 
     setup_run_logging(log_dir)
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = select_device()
     write_run_meta(log_dir, config["training"]["seed"], device)
 
     checkpoint_path = project_root / args.checkpoint

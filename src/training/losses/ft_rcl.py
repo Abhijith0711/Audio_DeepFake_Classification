@@ -38,9 +38,16 @@ def ft_rcl_loss(
     gamma_pc=1.0,
     gamma_ftsc=0.5,
     criterion=None,
+    gate="full",
 ):
     if criterion is None:
         criterion = nn.CrossEntropyLoss()
+
+    # Loss terms are always computed in FP32, even if the model ran under autocast.
+    logits_clean = logits_clean.float()
+    logits_deg = logits_deg.float()
+    s_clean = s_clean.float()
+    s_deg = s_deg.float()
 
     p_clean = F.softmax(logits_clean, dim=1)[:, 1]
     p_deg = F.softmax(logits_deg, dim=1)[:, 1]
@@ -51,8 +58,13 @@ def ft_rcl_loss(
     l_pc = prediction_coherence_loss(p_clean, p_deg)
     l_ftsc = ftsc_loss(s_clean, s_deg)
 
-    w_rob = type_gating_weights(types, type_alpha, p_clean) * severity_eta
-    w_rob = w_rob.mean()
+    if gate == "none":
+        # Ablation: no type weights and no confidence term, severity scaling only.
+        w_rob = p_clean.new_tensor(float(severity_eta))
+    elif gate == "full":
+        w_rob = (type_gating_weights(types, type_alpha, p_clean) * severity_eta).mean()
+    else:
+        raise ValueError(f"Unknown gate mode: {gate}")
 
     robust = gamma_pc * l_pc + gamma_ftsc * l_ftsc
     total = loss_cls_clean + beta * loss_cls_deg + w_rob * robust

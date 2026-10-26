@@ -1,0 +1,63 @@
+% ---------------------------------------------------------------------------
+% macros.tex -- shared commands for the project report
+% (figure / table helpers keep the signatures used throughout the chapters)
+%
+%   \figimage{key}{caption}{path}
+%       single figure, label  fig:<key>
+%   \figimagepair{key}{caption}{path-a}{sub-caption-a}{path-b}{sub-caption-b}
+%       two side-by-side sub-figures, labels  fig:<key>, fig:<key>-a, fig:<key>-b
+%   \tabplaceholder{id}{caption}{note}
+%       boxed note for a table that is not yet available
+% ---------------------------------------------------------------------------
+
+% Height limit so that a single figure never dominates a page.
+\newcommand{\figmaxheight}{0.36\textheight}
+\newcommand{\figpairmaxheight}{0.26\textheight}
+
+% Fallback box when an image file cannot be found (also raises a warning).
+\newcommand{\missingfigurebox}[2]{%
+  \PackageWarning{macros}{Figure file not found: #1}%
+  \fbox{\parbox[c][0.18\textheight][c]{\dimexpr#2-2\fboxsep-2\fboxrule\relax}{\centering\small\bfseries Missing figure:\\[4pt]\scriptsize\nolinkurl{#1}}}%
+}
+
+\newcommand{\figimage}[3]{%
+  \begin{figure}[!htbp]
+    \centering
+    \IfFileExists{#3}%
+      {\includegraphics[width=\linewidth,height=\figmaxheight,keepaspectratio]{#3}}%
+      {\missingfigurebox{#3}{0.9\linewidth}}%
+    \caption{#2}\label{fig:#1}
+  \end{figure}%
+}
+
+\newcommand{\figimagepair}[6]{%
+  \begin{figure}[!htbp]
+    \centering
+    \begin{subfigure}[t]{0.48\linewidth}
+      \centering
+      \IfFileExists{#3}%
+        {\includegraphics[width=\linewidth,height=\figpairmaxheight,keepaspectratio]{#3}}%
+        {\missingfigurebox{#3}{0.9\linewidth}}%
+      \caption{#4}\label{fig:#1-a}
+    \end{subfigure}\hfill
+    \begin{subfigure}[t]{0.48\linewidth}
+      \centering
+      \IfFileExists{#5}%
+        {\includegraphics[width=\linewidth,height=\figpairmaxheight,keepaspectratio]{#5}}%
+        {\missingfigurebox{#5}{0.9\linewidth}}%
+      \caption{#6}\label{fig:#1-b}
+    \end{subfigure}
+    \caption{#2}\label{fig:#1}
+  \end{figure}%
+}
+
+\newcommand{\tabplaceholder}[3]{%
+  \begin{table}[!htbp]
+    \centering
+    \caption{#2}\label{tab:#1}
+    \fbox{\parbox{0.92\linewidth}{\small #3}}
+  \end{table}%
+}
+
+% Text helpers
+\newcommand{\dM}{\ensuremath{\Delta M}}

@@ -1,0 +1,59 @@
+\chapter{Introduction}
+\label{ch:introduction}
+
+\section{Background and motivation}
+
+Neural text-to-speech, singing-voice conversion, text-to-music and general audio generators have made convincing fake audio cheap to produce. Clips travel quickly through messaging applications and social media, and a listener has almost no way to check where a recording came from. Audio deepfake detection (ADD) is the task of deciding from the signal alone whether a recording is genuine or synthetic.
+
+The first systematic work grew out of speaker-verification security, where replay, synthesis and voice-conversion attacks led to the ASVspoof challenges and to the equal error rate (EER) as the standard metric~\cite{kinnunen2017detection,wang2020asvspoof}. Newer benchmarks cover speech, singing, music and environmental sound together, and add channel distortions that resemble real use~\cite{xie2026atadd}. We use Track~2 of the AT-ADD benchmark, where the detector sees only a clip and must say real or fake without being told the audio type. This is closer to deployment than speech-only testing, but it also makes it easy for a model to look good on one type and fail on the others.
+
+Deployment is the second motivation. Audio that reaches a detector has usually been re-encoded or resampled, sometimes mixed with noise or sent through a telephone channel, and the detector may have to run on a handset with a small memory and battery. The strongest AT-ADD entries rely on self-supervised encoders with hundreds of millions of parameters~\cite{xie2026atadd,fan2026dualssl}, which do not fit that setting. A small network that learns to cope with channel changes during training, and costs the same as any small network at inference, is the alternative we examine.
+
+\section{Challenges}
+
+\paragraph{Different audio types.} Speech, singing, music and environmental sound differ in harmonic structure, in how they change over time and in how much noise they carry. Artefacts that expose a vocoder in speech need not appear in a music clip made by a diffusion model. Results therefore have to be reported for each type and not only pooled.
+
+\paragraph{Unseen generators.} A test fake may come from a generator the model has never seen~\cite{xie2026atadd}. If validation data share generators with the training data, validation scores say little about this case; Section~\ref{sec:generator-gap} shows how large the difference is for AT-ADD.
+
+\paragraph{Channel changes.} Compression, resampling, noise and band-limiting alter the spectral detail on which detectors rely. A claim of robustness needs evidence on degraded audio, preferably degraded in ways the model was not trained on.
+
+\paragraph{Shortcuts.} Duration, silence, loudness or bandwidth can correlate with the label in a corpus without telling anything about synthesis~\cite{muller2021silver}. Whether such cues exist in AT-ADD has to be checked.
+
+\paragraph{Compute limits.} An edge detector is limited in parameters, arithmetic, memory and latency. A small parameter count is necessary but does not prove real-time operation; that needs measurement on the device.
+
+\section{Problem statement}
+
+The input is a mono waveform of four seconds at 24\,kHz, and the output is a label $y\in\{0,1\}$ (real or fake). The test set mixes four audio types and the type is hidden. We want a detector that works on all four types, that degrades gracefully when the audio is compressed, resampled, band-limited or noisy, and that is small enough for an edge device. Because the last requirement rules out a larger inference network, the robustness has to come from training.
+
+\section{Research gap and objectives}
+
+The literature in Chapter~\ref{ch:literature} leaves three gaps that this project touches. Compact detectors are almost always tested on speech only. Robustness is usually pursued by data augmentation, and the extra value of an explicit agreement loss between clean and degraded views has rarely been measured against an augmented baseline. Finally, edge suitability is normally argued from parameter counts instead of measured cost. We address these for one fixed backbone.
+
+The primary objective is to find out whether coherence regularisation makes a compact detector more robust to channel degradation than augmentation alone, without hurting clean performance. We state this as four hypotheses:
+
+\begin{description}
+  \item[H1] FT-RCL reduces the mean AUROC drop over the training degradations by at least 20\% relative to a clean-trained baseline, and the bootstrap interval of the difference excludes zero.
+  \item[H2] FT-RCL reduces that drop compared with the same network trained on degraded audio alone.
+  \item[H3] The clean EER of FT-RCL is within one percentage point of the baseline.
+  \item[H4] The advantage in H1 also holds for codecs and channels not used in training.
+\end{description}
+
+The secondary objectives are to set up an evaluation protocol that can tell unseen-generator performance from in-generator performance, to test whether simple acoustic cues predict the label, and to measure what the network costs to run.
+
+How far the available evidence goes is stated in Chapter~\ref{ch:conclusion}. In short, H3 could be tested and was not met; H1, H2 and H4 could not be tested because the degraded-audio experiments that exist are not valid, as explained in Section~\ref{sec:robustness-pilot}.
+
+\section{Contributions}
+
+\begin{itemize}
+  \item A comparison of a clean-trained baseline, FT-RCL and the STAR-Edge extension for one compact backbone, evaluated on audio from 38 generators unseen in training, with type-averaged metrics, a single global threshold, calibration and bootstrap intervals.
+  \item An explanation for the large gap between development and evaluation scores: the official development split contains the same 29 fake generators as the training split.
+  \item Evidence on shortcut cues in AT-ADD, including the native sampling rate of the corpus (16\,kHz for every clip we inspected), which removes the bandwidth argument for a 24\,kHz frontend.
+  \item An audit of our own pipeline that found three problems (a signature module with empty bands, a curriculum that did not take effect with persistent data-loading workers, and a robustness pilot made only of fake music), together with the corrected implementation.
+  \item A measured cost profile of the network: parameters, multiply-accumulates and weight size.
+\end{itemize}
+
+FT-RCL is built from known parts. Agreement between predictions for perturbed copies of an input is the basis of consistency regularisation~\cite{xie2020uda,hendrycks2020augmix}, and curriculum scheduling and feature-level agreement are likewise established. What we add is the adaptation to compact all-type detectors (band-wise signatures and a type-, confidence- and severity-dependent weight) and a controlled comparison against a clean-trained baseline. The M1 and M2 control runs that would separate the effect of the agreement terms from the effect of augmentation were not run, so that separation is still open.
+
+\section{Organisation of the report}
+
+Chapter~\ref{ch:literature} reviews related work. Chapter~\ref{ch:methodology} describes the method and evaluation protocol, and Chapter~\ref{ch:setup} the data use, the training budget and the experiment catalogue. Chapter~\ref{ch:prelim} reports the preliminary studies that fixed the baseline. Chapter~\ref{ch:results} presents and discusses the main results, and Chapter~\ref{ch:conclusion} gives the conclusions, limitations, ethical considerations and future work.
