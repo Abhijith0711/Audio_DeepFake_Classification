@@ -3,13 +3,18 @@
 \resizebox{\linewidth}{!}{%
 \begin{tikzpicture}
 \node[blk,text width=2.4cm] (in) at (0,0) {$1\times80\times T$\\log-mel};
-\node[blk,text width=3.4cm] (mn) at (3.6,0) {\textbf{MobileNetV3-Small}\\inverted residuals};
-\node[blk,text width=2.2cm] (gp) at (7.8,0) {\textbf{Global pool}};
-\node[blk,text width=2.2cm] (hd) at (11.0,0) {\textbf{2-class head}};
-\draw[arr] (in)--(mn);
+\node[blk,text width=2.2cm] (bn) at (3.0,0) {\textbf{Fresh BN0}\\$80$ mel bins};
+\node[blk,text width=3.4cm] (mn) at (6.6,0) {\textbf{PANNs MobileNetV2}\\AudioSet-pretrained};
+\node[blk,text width=2.8cm] (gp) at (10.6,0) {\textbf{Pooling}\\Freq-mean $\to$ Temp max+mean};
+\node[blk,text width=2.4cm] (fc) at (14.2,0) {\textbf{Pretrained FC1}\\$1024$ + Dropout};
+\node[blk,text width=2.2cm] (hd) at (17.4,0) {\textbf{2-class head}\\binary real/fake};
+\draw[arr] (in)--(bn);
+\draw[arr] (bn)--(mn);
 \draw[arr] (mn)--(gp);
-\draw[arr] (gp)--(hd);
+\draw[arr] (gp)--(fc);
+\draw[arr] (fc)--(hd);
 \end{tikzpicture}}
-\caption{MobileNetV3-Small baseline on single-channel log-mel input (${\sim}1.52$\,M parameters).}
+\caption{Selected clean baseline architecture M0 (PANNs MobileNetV2 with AudioSet-pretrained feature extractor, fresh 80-bin BN0, and binary classification head; $3{,}537{,}250$ parameters).}
 \label{fig:mobilenet-baseline}
+\label{fig:panns-baseline}
 \end{figure}

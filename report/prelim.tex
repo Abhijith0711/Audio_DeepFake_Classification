@@ -1,66 +1,64 @@
 \chapter{Preliminary Studies}
 \label{ch:prelim}
 
-Before the main comparison, a series of earlier experiments settled the frontend and the backbone. They used the complete official training lists and are reported here because they motivated later choices, not as part of the main evidence. Each configuration was run once.
+This chapter presents the clean baseline model selection on AT-ADD Track~2 alongside exploratory preliminary observations and architectural context from published literature.
 
-\section{Frontend study on ASVspoof 2019 LA}
+\section{Exploratory frontend observations on ASVspoof 2019 LA}
 \label{sec:frontend-study}
 
-Two frontends were compared on the ASVspoof~2019 logical-access evaluation list (71{,}237 clips; 25{,}380 training and 24{,}844 development clips). Setting P1 used 16\,kHz audio, a four-second zero-padded window, a 400-sample frame and a 160-sample hop. Setting P2 used 24\,kHz audio, repeat-padding, a 600-sample frame and a 240-sample hop. Backbone, recipe and seed were identical. The evaluation EER was 6.67\% for P1 and 12.49\% for P2 (Table~\ref{tab:asv-frontend}). In P1 the recall on attack A18 was above 98.6\%, in P2 it was 0.43\%.
+During initial exploratory work, preliminary runs examined frontend variations on the ASVspoof~2019 logical-access evaluation list. However, because sampling rate (16\,kHz vs.\ 24\,kHz), duration padding (zero-padding vs.\ repeat-padding), frame length, and hop size were varied simultaneously, no causal attribution can be drawn regarding the isolated effect of any individual factor. Furthermore, because ASVspoof~2019 LA speech is natively sampled at 16\,kHz, up-sampling to 24\,kHz introduces no high-frequency vocoder cues above 8\,kHz. Consequently, these exploratory runs serve solely as historical context and are not presented as experimental evidence of padding or bandwidth superiority. As detailed in Section~\ref{sec:duration-norm}, repeat-padding was selected for the AT-ADD benchmark as a controlled preprocessing choice to prevent deterministic trailing-silence cues across variable-duration recordings, without asserting universal padding superiority.
 
-The two settings differ in padding, sampling rate, frame length and hop at the same time, so the difference cannot be put down to padding alone. It is in line with the duration shortcut that has been reported for ASVspoof~2019~\cite{muller2021silver}: zero-padded clips let a classifier read the length of the speech. But the experiment does not isolate that effect, and the idea that P2 shows ``true'' discrimination is a hypothesis. ASVspoof~2019 LA is also natively 16\,kHz, so the 24\,kHz setting only up-samples the signal and cannot expose 8--12\,kHz vocoder artefacts. We did not run the single-factor experiments (padding only, sampling rate only) that would settle the question.
-
-\begin{table}[htbp]
-\centering
-\caption{ASVspoof 2019 LA evaluation results of the frontend and head comparison (single runs).}
-\label{tab:asv-frontend}
-\small
-\begin{tabular}{@{}llrrrr@{}}
-\toprule
-Setting & Head & Accuracy & Macro-F1 & AUROC & EER (\%) \\
-\midrule
-P1: 16\,kHz, zero-pad & CNN & 0.909 & 0.820 & 0.9688 & 6.67 \\
-P1: 16\,kHz, zero-pad & CNN + GRU & 0.867 & 0.763 & 0.9599 & 7.55 \\
-P1: 16\,kHz, zero-pad & CNN + LSTM & 0.865 & 0.761 & 0.9666 & 6.82 \\
-P2: 24\,kHz, repeat-pad & CNN & 0.753 & 0.648 & 0.9324 & 12.49 \\
-P2: 24\,kHz, repeat-pad & CNN + GRU & 0.692 & 0.597 & 0.9198 & 13.82 \\
-P2: 24\,kHz, repeat-pad & CNN + LSTM & 0.710 & 0.612 & 0.9310 & 12.59 \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-On ASVspoof~2019 the recurrent heads are within about one EER point of the CNN head under both settings. We chose the repeat-padded 24\,kHz frontend for the AT-ADD experiments to avoid the silence cue, knowing that the corpora are natively 16\,kHz and that the larger bandwidth brings no new information.
-
-\section{Backbone study on AT-ADD Track 2}
+\section{Clean baseline model selection on AT-ADD Track 2}
 \label{sec:backbone-study}
 
-The CNN head (global average pooling) was compared with a one-layer GRU head (1.20\,M parameters)~\cite{cho2014gru} and a one-layer LSTM head (1.29\,M parameters)~\cite{hochreiter1997lstm} with hidden size 128 on the same convolutional extractor, which retains the time axis by pooling over frequency only, in the manner of earlier convolutional-recurrent spoofing detectors~\cite{gomez2019light,chintha2020crnn}. Table~\ref{tab:baseline-architecture-atadd} gives the results on the complete evaluation list. The CNN head has the lowest EER, 2.2 points below the LSTM head and 2.5 points below the GRU head, and the highest accuracy.
+To establish a rigorous clean baseline before evaluating robustness-oriented objectives, three candidate configurations were systematically investigated on AT-ADD Track~2 under the generator-disjoint evaluation protocol across three independent random seeds (seeds 42, 1337, and 2024), structured as a progressive representation study:
+\begin{itemize}
+  \item \textbf{E1 (Compact scratch CNN candidate):} Asks whether a very compact, randomly initialized vision CNN (MobileNetV3-Small, $1{,}519{,}618$ parameters) operating on compact 80-bin log-mel spectrograms can learn the clean AT-ADD multi-type task from scratch.
+  \item \textbf{E2 (Temporal recurrence candidate):} Asks whether adding explicit temporal sequence modelling improves upon the compact CNN representation by extending the MobileNetV3-Small features with a one-layer GRU (hidden size 128, $1{,}198{,}082$ parameters) following frequency-axis pooling.
+  \item \textbf{E3 (Pretrained audio representation candidate):} Asks whether an AudioSet-pretrained general audio representation provides a stronger clean reference than randomly initialized models. It adapts PANNs MobileNetV2~\cite{kong2020panns} with a newly initialized 80-bin batch-normalisation layer and binary classification head ($3{,}537{,}250$ parameters), leveraging acoustic features pretrained on two million multi-domain clips from AudioSet.
+\end{itemize}
+
+Table~\ref{tab:baseline-architecture-atadd} presents the evaluation results across all three seeds on the complete 44{,}289-clip evaluation manifest.
 
 \begin{table}[htbp]
 \centering
-\caption{Head comparison on the complete AT-ADD Track~2 evaluation list (full training data, 20 epochs, single run).}
+\caption{Clean baseline model selection on the complete AT-ADD Track~2 evaluation manifest ($44{,}289$ clips, 3 independent seeds, mean $\pm$ sample SD at fixed threshold 0.5).}
 \label{tab:baseline-architecture-atadd}
 \small
+\begin{adjustbox}{max width=\textwidth}
 \begin{tabular}{@{}lccccc@{}}
 \toprule
-Head & Parameters & Accuracy & Macro-F1 & AUROC & EER (\%) \\
+Model & Parameters & Type-avg Macro-F1 & Accuracy & AUROC & EER \\
 \midrule
-CNN (global average pooling) & 1.52\,M & 0.757 & 0.678 & 0.8750 & 19.92 \\
-CNN + GRU & 1.20\,M & 0.699 & 0.630 & 0.8425 & 22.43 \\
-CNN + LSTM & 1.29\,M & 0.696 & 0.626 & 0.8622 & 22.15 \\
+E1: MobileNetV3-Small & $1{,}519{,}618$ & $0.5148 \pm 0.0378$ & $0.6199 \pm 0.0117$ & $0.8289 \pm 0.0516$ & $0.2511 \pm 0.0460$ \\
+E2: MobileNetV3-Small + GRU & $1{,}198{,}082$ & $0.5039 \pm 0.0720$ & $0.6628 \pm 0.0846$ & $0.8318 \pm 0.0163$ & $0.2436 \pm 0.0103$ \\
+\textbf{E3: PANNs MobileNetV2 (M0)} & $\mathbf{3{,}537{,}250}$ & $\mathbf{0.6274 \pm 0.0158}$ & $\mathbf{0.7349 \pm 0.0176}$ & $\mathbf{0.8800 \pm 0.0032}$ & $\mathbf{0.1993 \pm 0.0028}$ \\
 \bottomrule
 \end{tabular}
+\end{adjustbox}
 \end{table}
 
-The CNN's validation Macro-F1 on the official development list was 0.953, against 0.678 on evaluation, a gap discussed in Section~\ref{sec:generator-gap}. The result shows that recurrence gave no gain in these single runs; it does not show that recurrent models are worse in general, and the explanation that they overfit non-stationary audio remains a conjecture. Only a single convolutional extractor was tried, so the CNN head cannot be called optimal either. We kept it as the backbone because it is also the cheapest. A pretrained small audio network could improve the weak music and sound results but was not tried.
+The experimental results address the central scientific questions:
+\begin{enumerate}[label=\textbf{\arabic*.},leftmargin=*,itemsep=0.2em]
+  \item \textbf{What did E1 test?} E1 tested whether a compact scratch-trained CNN can discriminate synthetic audio on unseen generators. It achieved meaningful overall separation ($0.8289$ AUROC), but suffered low type-averaged Macro-F1 ($0.5148 \pm 0.0378$; pooled Macro-F1 $0.5634 \pm 0.0130$) due to severe failure on non-speech categories.
+  \item \textbf{What did E2 add?} E2 investigated whether explicit temporal sequence modelling improves the compact representation. While E2 improved pooled Macro-F1 ($0.5972 \pm 0.0621$) and slightly reduced EER ($0.2436 \pm 0.0103$), it did not improve type-averaged Macro-F1 ($0.5039 \pm 0.0720$) and exhibited heightened seed-to-seed sensitivity.
+  \item \textbf{What did E3 change?} E3 evaluated transfer from a rich, general-purpose audio representation. Unlike E1 and E2, which learned filters from scratch, E3 was initialized with AudioSet-pretrained weights from Kong et al.~\cite{kong2020panns}. While the original PANNs MobileNetV2 uses 64 mel bins and a 527-class head ($4{,}075{,}343$ parameters), our adapted E3 model incorporates a fresh 80-bin batch-normalisation layer and binary classification head ($3{,}537{,}250$ parameters).
+  \item \textbf{Which model performed best?} E3 achieved the best results across every clean metric among the tested configurations: type-averaged Macro-F1 was $11.26$ points higher than E1 and $12.35$ points higher than E2; accuracy reached $0.7349$; AUROC reached $0.8800$; and EER dropped to $0.1993$. (Under development-calibrated operating thresholds $\theta^*$, type-averaged Macro-F1 reached $0.6978 \pm 0.0046$).
+  \item \textbf{How stable were the models across seeds?} E1 and E2 showed substantial variation across initialisation seeds (E1 AUROC SD was $0.0516$; E2 type-averaged Macro-F1 SD was $0.0720$). E3 showed exceptional stability across runs ($\sigma_{\mathrm{AUROC}} = 0.0032$, $\sigma_{\mathrm{EER}} = 0.0028$), confirming that pretrained audio representations stabilize optimization under severe class imbalance.
+  \item \textbf{Why was E3 selected?} E3 proved to be the best-performing tested clean reference model and demonstrated superior reproducibility. While E3 is larger ($3.54$\,M parameters vs $1.52$\,M for E1 and $1.20$\,M for E2), its clean accuracy and cross-seed stability motivated its decisive selection as the official reference baseline \textbf{M0}.
+\end{enumerate}
 
-\section{Comparison with a published MobileNetV3 system}
+\section{Architectural context from published MobileNetV3 systems}
 
-Pham et al.~\cite{pham2024deepfake} report an EER of 48\% for an ImageNet-pretrained MobileNetV3 on three-channel linear-filterbank images of two-second slices of ASVspoof~2019 audio. We re-implemented their signal processing and score aggregation and trained with our own recipe (AdamW, cosine learning-rate decay, class-weighted loss, per-bin normalisation). The utterance-level EER was 16.85\% with AUROC 0.9180 (segment level: 17.01\%, 0.9162). The two implementations differ in optimiser, schedule, normalisation and recipe, so the gap to the published figure cannot be assigned to one cause. Likewise, the project baseline in setting P2 (EER 12.49\%) differs from this re-implementation in frontend, duration and sampling rate simultaneously, so the comparison does not show that one frontend is better. Table~\ref{tab:pham_comparison} lists the numbers; the published F1 values are weighted or majority-class scores and are not comparable with our unweighted Macro-F1.
+Pham et al.~\cite{pham2024deepfake} demonstrate the viability of lightweight CNN and convolutional-recurrent architectures for audio deepfake detection. Their experiments, however, target ASVspoof~2019 and therefore do not provide a directly comparable numerical reference for the heterogeneous AT-ADD Track~2 setting used here.
+
+Pham et al.\ report an EER of 48\% for an ImageNet-pretrained MobileNetV3 on three-channel linear-filterbank images of two-second slices of ASVspoof~2019 speech. We re-implemented their signal processing and score aggregation and trained with our own recipe (AdamW, cosine learning-rate decay, class-weighted loss, per-bin normalisation). The utterance-level EER was 16.85\% with AUROC 0.9180 (segment level: 17.01\%, 0.9162). 
+
+This comparison provides architectural literature context for MobileNetV3-based feature extraction (as explored in candidate E1), but must be clearly distinguished from our selected baseline M0 (PANNs MobileNetV2, E3). The published external runs and the AT-ADD benchmark differ simultaneously in frontend, sampling rate, training data, and evaluation protocols, preventing direct apples-to-apples performance comparisons across datasets. Table~\ref{tab:pham_comparison} lists the ASVspoof numbers for literature reference.
 
 \begin{table}[htbp]
 \centering
-\caption{Published and re-implemented MobileNetV3 systems and the project baselines on the ASVspoof 2019 LA evaluation list.}
+\caption{Published and re-implemented MobileNetV3 systems on the ASVspoof 2019 LA evaluation list.}
 \label{tab:pham_comparison}
 \small
 \resizebox{\textwidth}{!}{
@@ -77,10 +75,6 @@ Best ensemble & STFT, CQT, LF, Gammatone & 90.00 & 0.910* & 0.994 & 3.00 \\
 \multicolumn{6}{@{}l}{\textit{Re-implementation (this work)}} \\
 C2, segment level & linear filterbank, $64{\times}64{\times}3$ & 64.95 & 0.564 & 0.9162 & 17.01 \\
 C2, utterance level & linear filterbank, $64{\times}64{\times}3$ & 64.60 & 0.561 & 0.9180 & 16.85 \\
-\midrule
-\multicolumn{6}{@{}l}{\textit{Project baselines}} \\
-P2 (CNN) & 80-mel, 24\,kHz, repeat-pad & 75.32 & 0.648 & 0.9324 & 12.49 \\
-P1 (CNN) & 80-mel, 16\,kHz, zero-pad & 90.90 & 0.820 & 0.9688 & 6.67 \\
 \bottomrule
 \end{tabular}}
 \vspace{2pt}

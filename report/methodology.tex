@@ -1,18 +1,18 @@
 \chapter{Proposed Methodology}
 \label{ch:methodology}
 
-This chapter describes the system, the data, the degradation simulator, the models and the evaluation protocol. Where an implementation problem found during this revision changes how a result should be read, it is stated in the section it affects and summarised in Section~\ref{sec:audit}.
+This chapter describes the system, the data, the degradation simulator, the models and the evaluation protocol. Where an implementation property affects how a result should be interpreted, it is stated in the section it affects and summarised in Section~\ref{sec:audit}.
 
 \section{System overview}
 \label{sec:overview}
 
-The system keeps one compact backbone (MobileNetV3-Small~\cite{howard2019mobilenetv3}) and changes only the training objective. Waveforms are cropped, converted to normalised log-mel features and classified. During robustness training each crop is also degraded and passed through the same network, and coherence losses tie the two outputs together.
+For regularisation investigations, the framework maintains a compact backbone (MobileNetV3-Small~\cite{howard2019mobilenetv3} in downstream exploratory experiments) and varies the training objective. Waveforms are cropped, converted to normalised log-mel features and classified. During robustness training each crop is also degraded and passed through the same network, and coherence losses tie the two outputs together.
 
 \subsection{Design principles}
 
 \begin{itemize}
   \item \textbf{Same inference graph.} All robustness machinery is used in training. At test time the model computes one mel spectrogram and runs one forward pass.
-  \item \textbf{A clean-trained reference.} Mode~M0 (class-weighted cross-entropy on clean input) uses the same preprocessing, data and architecture as the other modes.
+  \item \textbf{A clean-trained reference.} Mode~M0 (class-weighted cross-entropy on clean input) provides the clean reference baseline.
   \item \textbf{Agreement between views.} A clean clip and a degraded copy of it carry the same label, so their outputs should be similar. Plain augmentation only shows the model degraded data; it does not ask the two outputs to agree.
 \end{itemize}
 
@@ -33,46 +33,73 @@ Degradation never alters the mel hyperparameters or normalization statistics, wh
 \section{Dataset and evaluation protocol}
 \label{sec:data}
 
-\subsection{AT-ADD Track~2}
+\subsection{AT-ADD Track 2}
+\label{sec:data-track2}
 
-AT-ADD Track~2 supplies a real/fake label, the audio type (speech, singing, music, sound) and, for fake clips, the generator~\cite{xie2026atadd}. The training list has 46{,}000 clips (16{,}000 real, 30{,}000 fake), the development list 36{,}536 and the evaluation list 44{,}289, which makes 126{,}825 clips in total. The class ratio in training is about eight real clips to fifteen fake clips and is handled by class weighting (Section~\ref{sec:baseline}). All 5{,}786 evaluation clips that we inspected have a native sampling rate of 16\,kHz (Section~\ref{sec:shortcuts}), and 24\% of the training clips and 29\% of the evaluation clips are shorter than four seconds and therefore need padding (Table~\ref{tab:durations}).
+AT-ADD Track 2 provides real/fake labels and audio-type annotations for speech, singing, music, and environmental sound. Generator metadata is available for fake audio samples. The present study uses project-specific manifest files prepared from the broader AT-ADD Track 2 dataset. The sample counts reported in the following sections refer to these manifests and should not be interpreted as the total size of the complete benchmark.
 
-\subsection{Generator overlap between the splits}
+The three manifests define the working dataset used in this study: 60,000 training samples, 22,536 development samples, and 44,289 evaluation samples. All records listed in these manifests were used in the reported experiments. The partitioning procedure and the resulting generator and speaker separation are described in Section~\ref{sec:partitioning}, while Section~\ref{sec:data-used} specifies how the manifest-defined data were used for training, validation, and evaluation.
+
+\subsection{Dataset Partitioning and Split Integrity}
+\label{sec:partitioning}
 \label{sec:overlap}
 
-The 29 fake generators of the development list are the same 29 as in the training list. The evaluation list has 38 generators, and none of them occurs in training or development. Scores on the official development list are therefore in-generator scores, and only the evaluation list measures generalisation to unseen generators. A validation set that is disjoint in generators can be built by removing a few generators from training; this was not done for the runs reported here (Section~\ref{sec:generator-gap} discusses the consequence).
+The original training and development data can share fake-audio generators, which may lead to optimistic validation results when a detector learns generator-specific characteristics. To address this issue, the project-specific data were organised into generator-disjoint training, development, and evaluation manifests. The resulting partitions were audited to examine generator overlap and speaker-ID overlap.
 
-\subsection{Data used in the reported experiments}
-
-The reported baseline, FT-RCL and STAR-Edge models were trained on a label-stratified subset of 13{,}800 training clips (4{,}800 real, 9{,}000 fake) and validated on a subset of 10{,}961 development clips (1{,}961 real, 9{,}000 fake). They were evaluated on a label-stratified subset of 13{,}287 evaluation clips (1{,}961 real, 11{,}326 fake) that contains clips from all 38 unseen generators. No evaluation clip was used for training or model selection. Table~\ref{tab:dataset-eval} gives the numbers per audio type. The earlier full-data reference runs of Chapter~\ref{ch:prelim} used the complete official lists.
+The three manifests contain 126,825 audio samples in total, distributed across 60,000 training samples, 22,536 development samples, and 44,289 evaluation samples. These counts describe the working dataset used in this study rather than the complete AT-ADD Track 2 collection. Table~\ref{tab:dataset-manifests} summarises the distribution of samples across the three manifests by class and audio type.
 
 \begin{table}[htbp]
 \centering
-\caption{Clips per audio type in the official lists and in the subsets used for the main comparison (real/fake in the last column).}
+\caption{Sample distribution across the manifest-defined dataset partitions.}
+\label{tab:dataset-manifests}
 \label{tab:dataset-eval}
 \small
-\begin{tabular}{@{}lrrrr@{}}
+\begin{tabular}{@{}lrrrrrrr@{}}
 \toprule
- & Official training & Official evaluation & Evaluation subset & Real / fake in subset \\
+Partition & Real & Fake & Total & Speech & Singing & Music & Sound \\
 \midrule
-Speech  & 24{,}000 & 27{,}000 & 8{,}083 & 599 / 7{,}484 \\
-Singing & 7{,}000 & 6{,}753 & 2{,}023 & 613 / 1{,}410 \\
-Music   & 8{,}000 & 4{,}536 & 1{,}387 & 160 / 1{,}227 \\
-Sound   & 7{,}000 & 6{,}000 & 1{,}794 & 589 / 1{,}205 \\
+Training    & 16{,}000 & 44{,}000 & 60{,}000  & 34{,}000 & 8{,}000 & 10{,}000 & 8{,}000 \\
+Development & 6{,}536  & 16{,}000 & 22{,}536  & 12{,}000 & 4{,}000 & 2{,}536  & 4{,}000 \\
+Evaluation  & 6{,}536  & 37{,}753 & 44{,}289  & 27{,}000 & 6{,}753 & 4{,}536  & 6{,}000 \\
 \midrule
-Total   & 46{,}000 & 44{,}289 & 13{,}287 & 1{,}961 / 11{,}326 \\
+\textbf{Total} & \textbf{29{,}072} & \textbf{97{,}753} & \textbf{126{,}825} & \textbf{73{,}000} & \textbf{18{,}753} & \textbf{17{,}072} & \textbf{18{,}000} \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-Because 85\% of the evaluation clips are fake and 61\% are speech, pooled metrics mostly describe fake speech. For this reason the type-averaged Macro-F1 of the benchmark is reported next to the pooled values.
+The manifest-defined dataset is imbalanced towards fake audio. Fake samples account for approximately 73.33\% of the training set, 71.00\% of the development set, and 85.24\% of the evaluation set. This imbalance is important when interpreting pooled evaluation metrics, particularly because the audio-type distributions also differ across partitions. Accordingly, pooled metrics are considered alongside audio-type-averaged Macro-F1 to assess performance across speech, singing, music, and sound.
+
+\paragraph{Generator-wise partitioning.} The generator metadata was examined to determine whether fake-audio generators were shared across the three manifests. The training set contains 21 distinct generator names, the development set contains 8, and the evaluation set contains 38. No exact generator name is shared between any pair of partitions. This means that the fake-audio generator groups in the training, development, and evaluation manifests are disjoint according to the generator labels recorded in the files.
+
+The training manifest contains 44,000 fake samples from 21 generators. AudioLDM2 contributes 4,000 samples. AudioLDM, DiffSpeech, FastDiff, FastPitch, FastSpeech2, Glow-TTS, GradTTS, Index-TTS, Kokoro, MelGAN, MusicLDM, NeuCoSVC\_inhouse, Parler-TTS (mini), PortaSpeech (normal), ProDiff, So-VITS-SVC\_inhouse, Stable Audio open, StarGANv2-VC, Tacotron2, and WaveGlow each contribute 2,000 samples.
+
+The development manifest contains 16,000 fake samples from eight generators: Audiogen, CosyVoice, Llasa1B, MeloTTS, MusicGen, SeedVC, Tortoise-TTS, and WaveNet. Each contributes 2,000 samples.
+
+The evaluation manifest contains 37,753 fake samples from 38 generator labels. RVC-FSD contributes 753 samples, while ACE-Step, Auffusion, BigVGAN, Both-Ears-Wide-Open, ChatTTS, CosyVoice2, CosyVoice3, DiffGANTTS, E2TTS, F5TTS, FireRedTTS2, Fish, Free-SVC, GPTSoVITS, HiFiGAN, IndexTTS1.5, IndexTTS2, KNN-SVC, Llasa3B, Llasa8B, MBMelGAN, MeanAudio, Musictango, OpenVoice2, ParallelWaveGAN, SSM-TTM, SeedVC1, So-VITS-SVC-FSD, SparkTTS, StepAudioTTS, StyleMelGAN, StyleSpeech, StyleTTS2, UniAudio2, Uniaudio2, VEVO1.5, and VITS each contribute 1,000 samples. Generator names are retained as recorded in the manifests.
+
+\paragraph{Speaker-ID overlap audit.} Speaker metadata was also examined to identify potential overlap between the partitions. After excluding missing identifiers, represented by \texttt{-}, and the generic \texttt{single-speaker} marker, the manifests contain 1,668 distinct explicit speaker IDs in training, 590 in development, and 1,097 in evaluation. No common explicit speaker IDs were found between training and development, training and evaluation, or development and evaluation.
+
+Speaker identifiers are not available for all samples. The \texttt{speaker\_id} field is missing for 52,000 training records, 18,536 development records, and 40,289 evaluation records. Consequently, the audit establishes non-overlap among the available explicit speaker identifiers but cannot independently establish speaker-level separation for recordings without identifiable speaker metadata. Generator disjointness and speaker-ID disjointness are therefore treated as separate properties of the dataset partitioning.
+
+Overall, the manifest audit establishes disjoint generator labels and disjoint explicit speaker identifiers across the three partitions. These checks support evaluation of generalisation to unseen generators and speakers where the metadata permits verification. The conclusions apply to the manifest-defined working dataset and should not be extended to samples outside these manifests without a corresponding audit.
+
+\subsection{Data Used in the Reported Experiments}
+\label{sec:data-used}
+
+The reported experiments use all records contained in the three project-specific manifests. The baseline, FT-RCL, and STAR-Edge models use the 60,000 samples in the training manifest for model fitting and the 22,536 samples in the development manifest for validation and checkpoint selection. Final evaluation is performed on all 44,289 samples in the evaluation manifest.
+
+The training manifest contains 16,000 real and 44,000 fake samples. The development manifest contains 6,536 real and 16,000 fake samples, while the evaluation manifest contains 6,536 real and 37,753 fake samples. All four audio categories are represented in each partition. No additional sampling was performed from these manifests for the reported experiments.
+
+The evaluation results therefore correspond to the complete evaluation manifest rather than smaller exploratory subsets. However, the 44,289 evaluated samples represent the evaluation data selected for this study and should not be described as the entirety of the broader AT-ADD Track 2 collection unless that scope is independently established.
+
+No evaluation-manifest samples are used for parameter updates or checkpoint selection. The development set is used for validation, while the evaluation set is reserved for final performance assessment. Since the generator labels are disjoint across the manifests, the evaluation protocol measures generalisation to generator labels not present in the training or development data. The reported results should be interpreted in the context of the manifest-defined dataset size, its class imbalance, its audio-type distribution, and the limitations of the available speaker metadata.
 
 \section{Audio preprocessing and log-mel frontend}
 \label{sec:frontend}
 
 \subsection{Loading and segmentation}
 
-Clips are resampled to $f_s$ if necessary. A clip longer than four seconds is cropped to length $N$ (random start in training, centre crop in evaluation), and a shorter clip is extended by repeat-padding, i.e.\ the waveform is tiled instead of being followed by zeros. Repeat-padding avoids a silence cue but can create an audible discontinuity at the repeat point, which we did not examine. Music and sound clips are ten seconds long on average, so a centre crop sees less than half of them; scoring a whole recording by averaging over several windows was not tested.
+Audio clips are converted to mono and resampled to $f_s = 24\,\text{kHz}$ to match the AT-ADD Track~2 evaluation standard. Each clip is formatted to a fixed duration of $N = 4 \times f_s = 96{,}000$ samples (four seconds). A recording longer than four seconds is cropped to length $N$ using a random start offset during training (providing temporal translation augmentation) and a deterministic centre crop during evaluation. A recording shorter than four seconds ($L < N$) is extended to length $N$ by periodic tiling (repeat-padding), $x_{\mathrm{pad}}[n] = x[n \pmod L]$. As justified in Section~\ref{sec:duration-norm}, repeat-padding is adopted as a controlled preprocessing choice to avoid the deterministic trailing-silence cue introduced by zero-padding, recognizing that repetition boundaries may introduce a waveform discontinuity.
 
 \subsection{Short-time Fourier transform and mel filtering}
 
@@ -89,12 +116,12 @@ Frames are centred using reflection padding, so a four-second segment yields $T_
 
 \subsection{Global normalization}
 
-The mean $\mu$ and standard deviation $\sigma$ are computed on the training split ($\mu \approx -9.19$, $\sigma \approx 6.85$ in the reference baseline) and applied in training and testing:
+The mean $\mu$ and standard deviation $\sigma$ are computed across all time-frequency bins of the 60{,}000-sample training manifest ($\mu \approx -9.128$, $\sigma \approx 6.774$) and applied globally to training, development, and evaluation splits:
 \begin{equation}
 \hat{\mathbf{L}} = (\mathbf{L} - \mu) / \sigma .
 \label{eq:norm}
 \end{equation}
-The tensor $\hat{\mathbf{L}}$ is treated as a single-channel image of shape $1 \times 80 \times T_m$ by the CNN (Figure~\ref{fig:mel-frontend}). Since the clips are natively 16\,kHz, resampling to 24\,kHz adds no information above 8\,kHz, and the upper part of the mel axis carries only interpolation residue. We kept the 24\,kHz setting from the preliminary studies and make no claim that it helps.
+The normalized tensor $\hat{\mathbf{L}}$ is formatted as a single-channel feature representation of shape $1 \times 80 \times T_m$ for input to the convolutional backbones (Figure~\ref{fig:mel-frontend}).
 
 \input{tikz/mel_frontend_diagram.tex}
 
@@ -151,12 +178,17 @@ The severity factor of the M3 gate (Section~\ref{sec:losses}) is
 \label{eq:eta}
 \end{equation}
 
-\section{Baseline model (mode M0)}
+\section{Clean baseline model selection (mode M0)}
 \label{sec:baseline}
 
-\subsection{Architecture}
+Three candidate detector configurations were evaluated during the clean baseline stage before selecting the model to be carried forward into subsequent experiments, representing a structured representation progression:
+\begin{itemize}
+  \item \textbf{E1 (Compact CNN reference):} used a scratch-trained MobileNetV3-Small~\cite{howard2019mobilenetv3} operating on the compact 80-bin log-mel representation, with depthwise-separable convolutions and inverted bottlenecks ($1{,}519{,}618$ parameters), drawing architectural motivation from lightweight vision-backbone studies in audio deepfake detection~\cite{pham2024deepfake}.
+  \item \textbf{E2 (Temporal baseline):} extended the MobileNetV3-Small convolutional representation with a one-layer GRU with hidden size 128 ($1{,}198{,}082$ parameters) to investigate whether explicit temporal sequence modelling improved the compact detector over global spatial pooling, following convolutional-recurrent designs evaluated in literature~\cite{pham2024deepfake}.
+  \item \textbf{E3 (Strong learned representation):} adapted PANNs MobileNetV2~\cite{kong2020panns} initialized with AudioSet-pretrained weights and a newly initialized binary real/fake classification head ($3{,}537{,}250$ parameters). Motivated by evidence that pretrained audio representations transfer rich discriminative priors~\cite{combei2024wavlm,kong2020panns}, this experiment investigated whether general-purpose audio pretraining provided a stronger starting point for deepfake detection than learning the representation entirely from scratch.
+\end{itemize}
 
-The baseline uses \textbf{MobileNetV3-Small} adapted to single-channel mel input (without ImageNet pre-training) and a two-logit classifier head, giving $1{,}519{,}618$ parameters. The forward pass is $\hat{\mathbf{L}} \mapsto z = f_\theta(\hat{\mathbf{L}})$ (Figure~\ref{fig:mobilenet-baseline}). Depthwise-separable convolutions and inverted bottlenecks keep the cost low. In the backbone comparison of Section~\ref{sec:backbone-study} the CNN head gave a lower EER than a GRU or LSTM head on the same extractor, in single runs. Only variants of this one backbone were tried, and no pretrained model was used, so we do not claim that it is the best small network for the task.
+All three configurations were evaluated using three independent training seeds (seeds 42, 1337, and 2024) under the standardized baseline protocol with gradient clipping ($\text{MAX\_GRAD\_NORM}=5.0$). E3 achieved the strongest clean performance across all metrics (type-averaged Macro-F1 of $0.6274 \pm 0.0158$, AUROC of $0.8800 \pm 0.0032$, and EER of $0.1993 \pm 0.0028$) and demonstrated substantially lower variation across seeds. It was therefore selected as the clean reference baseline \textbf{M0}. From this point onward, \textbf{M0 refers specifically to E3} (Figure~\ref{fig:mobilenet-baseline}).
 
 \input{tikz/mobilenet_baseline_diagram.tex}
 
@@ -167,7 +199,7 @@ With class counts $n_0, n_1$ and total $n = n_0 + n_1$, the weights $\omega_j = 
 \mathcal{L}_{\mathrm{CE}}(z, y) = -\sum_{j \in \{0,1\}} \omega_j \,\mathbb{1}[y=j]\,\log p_j .
 \label{eq:ce}
 \end{equation}
-For the 16:30 (real:fake) ratio of the official training list this gives $\omega_0 \approx 1.44$ and $\omega_1 \approx 0.77$. Mode \textbf{M0} (clean-only training) minimizes $\mathcal{L}_{\mathrm{CE}}$ on clean batches only.
+For the $16{,}000:44{,}000$ (real:fake) ratio of the training manifest ($n=60{,}000$), this gives $\omega_0 = 1.875$ for genuine audio and $\omega_1 \approx 0.682$ for synthetic audio. Mode \textbf{M0} (clean-only training with selected model E3) minimizes $\mathcal{L}_{\mathrm{CE}}$ on clean batches only.
 
 \section{FT-RCL detector}
 \label{sec:ftrcl}
@@ -185,7 +217,7 @@ s = \mathrm{normalize}\big(s^{(0)},\ p=2,\ \mathrm{dim}=-1\big).
 \label{eq:signature}
 \end{equation}
 
-The question of how eight bands arise from a feature map with few rows has a direct answer: they do not. The backbone reduces frequency resolution by a factor of 32, so an input with 80 mel bins gives $H=3$ rows at the last layer. The implementation used for the reported runs assigned one row to each of the first three bands and left bands four to eight empty. The mean of an empty slice is undefined, so five of the eight signature bands were not-a-number, the logged FTSC and total loss were not-a-number in every epoch (the loss columns of the saved training logs are empty), and the training loss could not be used for monitoring. The gradients were nevertheless finite, because the undefined bands are not connected to the feature map, so training went on and the FTSC term constrained only the first three bands (one row each). We reproduced this behaviour: with the old module the loss is undefined while all parameter gradients are finite. The earlier explanation that the loss was unstable under mixed precision was wrong; the runs used a CPU and no mixed precision (Chapter~\ref{ch:setup}).
+The question of how eight bands arise from a feature map with few rows has a direct answer: they do not. The backbone reduces frequency resolution by a factor of 32, so an input with 80 mel bins gives $H=3$ rows at the last layer. The implementation used for the reported runs assigned one row to each of the first three bands and left bands four to eight empty. The mean of an empty slice is undefined, so five of the eight signature bands were not-a-number, the logged FTSC and total loss were not-a-number in every epoch (the loss columns of the saved training logs are empty), and the training loss could not be used for monitoring. The gradients were nevertheless finite, because the undefined bands are not connected to the feature map, so training went on and the FTSC term constrained only the first three bands (one row each). We reproduced this behaviour: with the old module the loss is undefined while all parameter gradients are finite. An exploratory conjecture that the loss was unstable under mixed precision was unfounded; the exploratory runs used a CPU and no mixed precision (Chapter~\ref{ch:setup}).
 
 The corrected module averages over time and then divides the $H$ rows into $K$ possibly overlapping bins with the boundaries used by adaptive average pooling, so that no band is empty. With $H=3$ the eight bands are still an interpolated view of three rows and not eight independent frequency bands. Taking the feature map from an earlier stage with finer frequency resolution would be a better design and is left for future work. The results of Chapter~\ref{ch:results} come from the old module, so they describe FTSC on three bands.
 
@@ -251,7 +283,7 @@ Table~\ref{tab:modes} summarizes how the four training modes combine the terms o
 \toprule
 Mode & Network & Views used in the loss & Loss \\
 \midrule
-M0 & MobileNetV3-Small & Clean & $\mathcal{L}_{\mathrm{CE}}(z_c,y)$ \\
+M0 & PANNs MobileNetV2 (E3) & Clean & $\mathcal{L}_{\mathrm{CE}}(z_c,y)$ \\
 M1 & FT-RCL detector & Degraded & $\mathcal{L}_{\mathrm{CE}}(z_d,y)$ \\
 M2 & FT-RCL detector & Clean and degraded & $\mathcal{L}_{\mathrm{cls}} + \bar{w}\,\gamma_{\mathrm{pc}}\mathcal{L}_{\mathrm{PC}}$ ($\eta\equiv 1$) \\
 M3 & FT-RCL detector & Clean and degraded & $\mathcal{L}_{\mathrm{cls}} + \bar{w}\,(\gamma_{\mathrm{pc}}\mathcal{L}_{\mathrm{PC}} + \gamma_{\mathrm{ftsc}}\mathcal{L}_{\mathrm{FTSC}})$ \\

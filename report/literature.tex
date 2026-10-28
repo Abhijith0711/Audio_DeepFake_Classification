@@ -1,39 +1,64 @@
 \chapter{Literature Review}
 \label{ch:literature}
 
-The review starts with speech spoofing benchmarks and moves to all-type detection, compact detectors, robustness to channel changes, consistency regularisation, shortcut learning and model compression. It ends with the gap that this project works on.
+This chapter reviews the development of audio deepfake detection, progressing from speech spoofing benchmarks to all-type audio detection, architectural exploration for compact detectors, transfer learning from pretrained representations, channel robustness, consistency regularisation, shortcut learning, and edge efficiency. It concludes by defining the precise research gaps addressed in this work.
 
-\section{From speaker verification to deepfake detection}
+\section{From speech spoofing to general audio deepfake detection}
 
-Work on fake audio began with attacks on speaker-verification systems. Replay, synthesis and voice conversion led to the ASVspoof challenges and to the EER as the main metric~\cite{kinnunen2017detection,wang2020asvspoof}. ASVspoof~2019 fixed a logical-access protocol for synthetic and converted speech~\cite{wang2020asvspoof}, and ASVspoof~5 later added crowdsourced recordings, adversarial attacks and codec conditions~\cite{wang2025asvspoof5}. Surveys describe how the problem has spread to singing, music and environmental sound~\cite{shaaban2023ieeeAccess,zhang2025sensorsSurvey,alnaqbi2026systematic,nguyenle2026deepfakeSurvey}. They also report that mel-spectrogram CNNs remain a common baseline~\cite{shaaban2023ieeeAccess,mcuba2023deeplearning} and that the most accurate systems use self-supervised encoders, at a much higher computational cost~\cite{li2024sonar}. WaveFake and FakeSound add data for neural vocoders and general audio~\cite{frank2021wavefake,xie2024fakesound}.
+Early research on synthetic audio detection focused primarily on protecting automatic speaker verification systems against replay, speech synthesis, and voice conversion attacks~\cite{kinnunen2017detection,wang2020asvspoof}. The ASVspoof challenge series established standardized logical-access (LA) and physical-access (PA) protocols, popularizing the equal error rate (EER) as the primary evaluation metric~\cite{wang2020asvspoof}. Later iterations, such as ASVspoof~5~\cite{wang2025asvspoof5}, introduced crowdsourced speech recordings, compression codecs, and adversarial attacks.
 
-\section{All-type benchmarks}
+However, modern generative audio models are no longer confined to human speech. As documented in recent surveys~\cite{shaaban2023ieeeAccess,zhang2025sensorsSurvey,alnaqbi2026systematic,nguyenle2026deepfakeSurvey}, synthetic generation has expanded across human singing, instrumental music, and environmental soundscapes. Addressing this broader attack surface, Xie et al.~\cite{xie2024fakesound} introduced the FakeSound benchmark for deepfake general audio detection. They demonstrated that generative models can produce non-speech audio so convincing that human listeners struggle to distinguish real from synthetic clips, achieving binary accuracy below 60\%. Crucially, speech-specific detection cues---such as pitch continuity, vocal tract formants, and phonetic articulatory dynamics---do not generalize to ambient noise, percussion, or synthesized musical instruments. Consequently, audio deepfake detection requires methods evaluated across heterogeneous acoustic domains.
 
-AT-ADD evaluates speech, singing, music and environmental sound together under realistic distortions~\cite{xie2026atadd}. Its Track~2 Macro-F1 averages the real and fake F1 scores inside each type and then averages over the four types, so good speech performance alone is not enough. The leading systems combine self-supervised encoders~\cite{xie2026atadd,fan2026dualssl} or use audio large language models with frequency-time reasoning~\cite{xie2026ftgrpo,gu2025allm4add}. Cross-domain and in-the-wild studies show that detectors lose a lot of accuracy when the recording conditions change~\cite{li2024crossdomain,muller2022generalize}.
+\section{All-type benchmarks and the AT-ADD challenge}
 
-\section{Compact detectors and frontends}
+The AT-ADD benchmark~\cite{xie2026atadd} was introduced to address this domain gap by evaluating speech, singing, music, and environmental sound under realistic acoustic distortions and unseen synthesis generators. While Track~1 focuses on robust speech detection, Track~2 evaluates all-type audio deepfake detection, requiring detectors to make a binary real/fake decision on incoming clips without prior knowledge of the underlying audio type.
 
-Several small detectors exist for speech. Light CNNs work on LFCC features~\cite{lavrentyeva2019stc}, RawNet2 works on the raw waveform~\cite{tak2021rawnet2}, AASIST uses graph attention with a very small parameter count~\cite{jung2022aasist}, and SpecRNet was designed for fast inference~\cite{kawa2022specrnet}. Pham et al.\ fine-tune ImageNet-pretrained vision networks, including MobileNetV3~\cite{howard2019mobilenetv3}, on linear-filterbank images~\cite{pham2024deepfake}. A comparison of feature types found that the best choice depends on the network~\cite{mcuba2023deeplearning}. These works use speech data and clean test audio, and they report parameter counts but not measured latency. Table~\ref{tab:related} lists them next to this work.
+To ensure balanced performance across acoustic domains, the official primary metric of AT-ADD Track~2 is the type-averaged Macro-F1:
+\begin{equation}
+F1_{\mathrm{type\text{-}avg}} = \frac{1}{4}\left(F1_{\mathrm{speech}} + F1_{\mathrm{sound}} + F1_{\mathrm{singing}} + F1_{\mathrm{music}}\right),
+\end{equation}
+where each $F1_{\mathrm{type}}$ represents the macro-averaged F1 score over genuine and synthetic classes within that audio category. This metric penalizes detectors that excel on high-volume categories (such as speech) while failing on singing, music, or environmental sound.
+
+The official AT-ADD benchmark results~\cite{xie2026atadd} provide important macroeconomic context for Track~2. Conventional spectrogram-based and raw-waveform baselines perform poorly across the full evaluation set: Spec-ResNet achieves $53.83\%$ Macro-F1 and raw-waveform AASIST~\cite{jung2022aasist} achieves $62.21\%$. The strongest official baseline, FT-XLSR-AASIST, reaches $79.47\%$ Macro-F1 by fully fine-tuning a 300M-parameter self-supervised speech encoder (XLS-R~\cite{babu2021xlsr}) alongside graph-attention backend layers. The top-performing challenge submission on Track~2, developed by team starfire, achieved $96.10\%$ Macro-F1 using a multi-expert ensemble: an audio-type router based on BEATs~\cite{chen2022beats} dispatches input clips to specialized speech (Speech-XLSRExpert) or general-audio (SoundMusic-EATExpert~\cite{chen2024eat}) expert branches. While these external benchmark results highlight the ceiling of multi-expert systems and heavy self-supervised foundations, they require massive memory and compute budgets, motivating the study of whether compact, edge-oriented detectors can provide viable clean discrimination.
+
+\section{Compact detectors and architectural baselines}
+
+Efforts to design compact speech deepfake detectors have produced several lightweight backbones, including Light CNNs on LFCC features~\cite{lavrentyeva2019stc}, RawNet2 on raw waveforms~\cite{tak2021rawnet2}, graph-attention AASIST variants~\cite{jung2022aasist}, and SpecRNet~\cite{kawa2022specrnet}. 
+
+Pham et al.~\cite{pham2024deepfake} conducted an extensive architectural investigation on ASVspoof~2019 logical-access audio, comparing standard CNNs, BiLSTM-based recurrent models, convolutional-recurrent networks (CRNN), and vision transfer-learning architectures including MobileNetV3~\cite{howard2019mobilenetv3}, ResNet-18, EfficientNet, DenseNet, and ShuffleNet on linear-filterbank representations. Their results demonstrated that compact convolutional and convolutional-recurrent architectures provide competitive single-model detection (CRNN achieving 14\% EER and an ensemble of lightweight models reaching 3\% EER). This demonstrates the viability of lightweight convolutional and recurrent architectures for audio deepfake detection, directly motivating our candidate designs: E1 tests a scratch-trained MobileNetV3-Small CNN, and E2 investigates whether explicit temporal modeling via a recurrent GRU layer improves discrimination over spatial pooling. However, because Pham et al.'s experiments target speech-only ASVspoof~2019 data, their numerical metrics provide architectural context rather than directly comparable figures for the heterogeneous AT-ADD Track~2 setting.
+
+\section{Pretrained audio representations and transfer learning}
+
+A parallel line of research investigates whether representations learned from massive unlabelled or weakly labelled audio corpora transfer general acoustic priors to deepfake detection.
+
+Combei et al.~\cite{combei2024wavlm} systematically benchmarked pretrained representations on the ASVspoof~5 challenge across three major paradigms: self-supervised speech representations (wavLM, wav2vec~2.0, HuBERT), general audio encoders (BEATs, YAMNet), and speaker-embedding networks (ECAPA-TDNN, TitaNet). Their empirical findings demonstrated that pretrained representations significantly improve deepfake detection over randomly initialized models, capturing subtle artifact patterns and distributional anomalies. However, full-scale self-supervised models carry massive parameter footprints (e.g., wavLM-base contains 95\,M parameters, while XLS-R reaches 300\,M to 2\,B parameters), introducing substantial compute and memory barriers for resource-limited edge hardware.
+
+Kong et al.~\cite{kong2020panns} demonstrated with Pretrained Audio Neural Networks (PANNs) that supervised multi-label pretraining on AudioSet (over two million clips spanning 527 sound classes) yields transferable acoustic representations across speech, music, and ambient sound. Crucially, PANNs includes compact architectures designed for computational efficiency: the PANNs MobileNetV2 architecture achieves an mAP of 0.383 on AudioSet with only 4,075,343 parameters and 2.81 billion MACs, requiring a fraction of the compute of large transformer-based SSL frontends. This insight directly motivates our E3 candidate: adapting an AudioSet-pretrained PANNs MobileNetV2 feature extractor with a fresh 80-bin input normalisation and binary classification head (yielding 3,537,250 parameters). E3 investigates whether general-purpose audio pretraining provides a substantially stronger starting point for all-type deepfake detection than learning purely from scratch.
 
 \begin{table}[htbp]
 \centering
-\caption{Representative detectors. Sizes are the approximate values given in the cited papers; ``--'' means we could not find a figure.}
+\caption{Representative deepfake detectors and external benchmark context. Sizes reflect parameter counts reported in cited literature or measured in this work; ``--'' indicates unreleased or variable ensemble size.}
 \label{tab:related}
 \small
-\setlength{\tabcolsep}{4pt}
+\setlength{\tabcolsep}{3.5pt}
 \begin{adjustbox}{max width=\textwidth}
-\begin{tabular}{@{}p{2.4cm}p{2.3cm}p{1.8cm}p{2.5cm}p{1.7cm}p{1.6cm}p{2.3cm}@{}}
+\begin{tabular}{@{}p{2.6cm}p{2.3cm}p{1.8cm}p{2.6cm}p{1.8cm}p{1.5cm}p{2.8cm}@{}}
 \toprule
-Method & Input & Size & Data & Robustness tested & Edge tested & Limitation \\
+Method & Input & Size & Benchmark / Data & Multi-Type & Edge & Characterisation / Role \\
 \midrule
-LCNN~\cite{lavrentyeva2019stc} & LFCC / spectrogram & -- & ASVspoof 2019 & No & No & Speech only \\
-RawNet2~\cite{tak2021rawnet2} & Raw waveform & about 25\,M & ASVspoof 2019 & No & No & Large, speech only \\
-AASIST-L~\cite{jung2022aasist} & Raw waveform & about 85\,k & ASVspoof 2019 & No & Size only & Speech only \\
-SpecRNet~\cite{kawa2022specrnet} & LFCC & about 250\,k & ASVspoof 2019, WaveFake & No & Size, speed & Speech only \\
-Pham et al.~\cite{pham2024deepfake} & Filterbank images & 1.5\,M & ASVspoof 2019 & No & No & Speech only \\
-XLS-R + SLS~\cite{zhang2024sls} & Raw (SSL) & about 300\,M & ASVspoof 2021, In-the-Wild & Partly & No & Too large \\
-Audio LLMs~\cite{xie2026ftgrpo,gu2025allm4add} & Waveform & billions & AT-ADD, ADD sets & Partly & No & Too large \\
-This work & 80-bin log-mel & 1.52\,M & AT-ADD Track~2 & Training degradations (pilot invalid) & Size, MACs & One backbone, one seed \\
+LCNN~\cite{lavrentyeva2019stc} & LFCC / Spec & -- & ASVspoof 2019 & No & No & Compact speech baseline \\
+AASIST-L~\cite{jung2022aasist} & Raw waveform & 85\,k & ASVspoof 2019 & No & Size only & Graph attention on sinc features \\
+Pham et al.~\cite{pham2024deepfake} & Filterbank images & 1.5\,M & ASVspoof 2019 & No & No & Compact MobileNetV3 / CRNN \\
+Combei et al.~\cite{combei2024wavlm} & Raw waveform & 95\,M--2\,B & ASVspoof 5 & No & No & Pretrained SSL benchmark \\
+PANNs MobileNetV2~\cite{kong2020panns} & Log-mel & 4.08\,M & AudioSet (2\,M clips) & Yes & Size, MACs & Pretrained general audio tagging \\
+\midrule
+Spec-ResNet~\cite{xie2026atadd} & STFT Spectrogram & $\approx$11\,M & AT-ADD Track 2 & Yes & No & Conventional baseline ($53.83\%$ F1) \\
+FT-XLSR-AASIST~\cite{xie2026atadd} & Raw waveform (SSL) & 300\,M+ & AT-ADD Track 2 & Yes & No & Strongest official baseline ($79.47\%$ F1) \\
+starfire ensemble~\cite{xie2026atadd} & Multi-encoder & $>1$\,B & AT-ADD Track 2 & Yes & No & Track 2 challenge winner ($96.10\%$ F1) \\
+\midrule
+\textbf{E1 (This work)} & 80-bin log-mel & 1.52\,M & AT-ADD Track 2 & Yes & Size, MACs & Scratch MobileNetV3-Small candidate \\
+\textbf{E2 (This work)} & 80-bin log-mel & 1.20\,M & AT-ADD Track 2 & Yes & Size, MACs & Scratch MobileNetV3 + GRU candidate \\
+\textbf{E3 / M0 (This work)} & 80-bin log-mel & 3.54\,M & AT-ADD Track 2 & Yes & Size, MACs & AudioSet-pretrained PANNs; \textbf{Selected M0} \\
 \bottomrule
 \end{tabular}
 \end{adjustbox}
@@ -57,10 +82,10 @@ Smaller networks such as MobileNetV3~\cite{howard2019mobilenetv3}, knowledge dis
 
 \section{Research gap}
 
+The literature review exposes four key gaps that frame this study:
 \begin{enumerate}
-  \item Compact detectors are almost always tested on speech. Their behaviour on music and environmental sound is largely undocumented.
-  \item Robustness is pursued through augmentation, and the added value of agreement losses over an augmented baseline has not been isolated.
-  \item Edge suitability is argued from parameter counts, and measured cost is seldom reported.
-  \item Validation sets that share generators with the training data hide generalisation failures.
+  \item \textbf{General-audio deepfakes across multi-type benchmarks:} Most prior work focuses narrowly on speech. General audio and all-type benchmarks (AT-ADD, FakeSound) expose unique cross-domain challenges where speech-specific models underperform.
+  \item \textbf{Representation trade-offs under edge constraints:} Prior work either evaluates compact scratch CNNs on speech or employs massive multi-hundred-million-parameter SSL backends. The middle ground---adapting compact pretrained general audio representations (such as PANNs MobileNetV2) versus scratch CNNs (MobileNetV3) and recurrent models---remains uncharacterized on all-type benchmarks.
+  \item \textbf{Dual-view consistency regularisation versus data augmentation:} Robustness is overwhelmingly pursued through plain data augmentation. The incremental utility of enforcing internal feature signature and prediction agreement between clean and degraded views on unseen generators has not been systematically isolated.
+  \item \textbf{Honest reporting of edge deployability and generator splits:} Edge suitability is frequently claimed based on parameter count alone, without measuring real runtime constraints, while evaluation sets sharing generators with training data mask severe out-of-distribution failure.
 \end{enumerate}
-This project looks at the second point for a fixed backbone and, because of the size of the available evidence, mainly provides a careful account of the first, third and fourth.

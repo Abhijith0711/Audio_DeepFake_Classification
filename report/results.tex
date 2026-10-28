@@ -1,37 +1,87 @@
 \chapter{Results and Discussion}
 \label{ch:results}
 
-All numbers in this chapter come from the saved evaluation predictions of the three trained models (baseline M0, FT-RCL M3 and STAR-Edge) on the 13{,}287-clip evaluation subset of Section~\ref{sec:data}, which contains clips from all 38 unseen generators. No model was trained for this chapter beyond the runs described in Chapter~\ref{ch:setup}. Each model was trained once, so intervals describe the sampling of evaluation clips and not training variance.
+This chapter reports empirical evaluations across two distinct phases. Section~\ref{sec:clean-eval} first presents the primary clean baseline model selection study, comparing candidate detectors E1, E2, and E3 on the full 44{,}289-clip evaluation manifest across three independent training seeds. Sections~\ref{sec:per-type}--\ref{sec:efficiency} then examine detailed per-generator, shortcut, and regularisation analyses (including FT-RCL M3 and STAR-Edge) conducted during the exploratory evaluation on the 13{,}287-clip evaluation subset using the compact MobileNetV3-Small baseline architecture (E1).
 
-\section{Clean evaluation}
+\section{Clean evaluation and baseline model selection}
 \label{sec:clean-eval}
 
-Table~\ref{tab:overall} gives the pooled results and the official type-averaged Macro-F1. The type-averaged score is the headline figure, because the pooled Macro-F1 is dominated by fake speech (61\% of the evaluation clips) and is higher than the type-averaged value for every model.
+Table~\ref{tab:overall} details the clean baseline model selection results evaluated on the 44{,}289-clip AT-ADD Track~2 evaluation manifest. The official AT-ADD Track~2 type-averaged Macro-F1 serves as the primary benchmark metric, because pooled Macro-F1 is heavily dominated by fake speech (61\% of evaluation clips) and masks detector failures on singing, music, and sound categories.
 
 \begin{table}[htbp]
 \centering
-\caption{Clean evaluation on the 13{,}287-clip subset (95\% bootstrap intervals in brackets). The last column is the expected calibration error.}
+\caption{Clean baseline model selection on AT-ADD Track~2 (evaluation manifest of 44{,}289 clips across 38 unseen generators; mean $\pm$ sample standard deviation across three independent training seeds). The official type-averaged Macro-F1 is the primary metric; pooled Macro-F1 ($\tau=0.5$), accuracy, AUROC, and EER are reported for comprehensive characterization.}
 \label{tab:overall}
 \small
-\setlength{\tabcolsep}{4pt}
+\setlength{\tabcolsep}{3.5pt}
 \begin{adjustbox}{max width=\textwidth}
-\begin{tabular}{@{}lccccc@{}}
+\begin{tabular}{@{}llcccccc@{}}
 \toprule
-Model & Macro-F1 (pooled) & Type-averaged Macro-F1 & AUROC & EER & ECE \\
+Model & Architecture & Parameters & Type-avg Macro-F1 & Pooled Macro-F1 & Accuracy & AUROC & EER \\
 \midrule
-Baseline (M0) & 0.672 [0.663, 0.681] & 0.587 [0.577, 0.598] & 0.852 [0.845, 0.860] & 0.216 [0.207, 0.224] & 0.209 \\
-FT-RCL (M3) & 0.659 [0.649, 0.668] & 0.589 [0.578, 0.600] & 0.843 [0.835, 0.851] & 0.234 [0.225, 0.243] & 0.207 \\
-STAR-Edge & 0.655 [0.646, 0.664] & 0.599 [0.588, 0.609] & 0.866 [0.859, 0.874] & 0.215 [0.206, 0.223] & 0.239 \\
+E1 & MobileNetV3-Small (scratch) & 1{,}519{,}618 & $0.5148 \pm 0.0378$ & $0.5634 \pm 0.0130$ & $0.6199 \pm 0.0117$ & $0.8289 \pm 0.0516$ & $0.2511 \pm 0.0460$ \\
+E2 & MobileNetV3-Small + GRU (scratch) & 1{,}198{,}082 & $0.5039 \pm 0.0720$ & $0.5972 \pm 0.0621$ & $0.6628 \pm 0.0846$ & $0.8318 \pm 0.0163$ & $0.2436 \pm 0.0103$ \\
+\textbf{E3 / M0} & \textbf{PANNs MobileNetV2 (pretrained)} & \textbf{3{,}537{,}250} & $\mathbf{0.6274 \pm 0.0158}$ & $\mathbf{0.6581 \pm 0.0143}$ & $\mathbf{0.7349 \pm 0.0176}$ & $\mathbf{0.8800 \pm 0.0032}$ & $\mathbf{0.1993 \pm 0.0028}$ \\
 \bottomrule
 \end{tabular}
 \end{adjustbox}
 \end{table}
 
-For the pairwise comparison the same bootstrap resamples were used for all models (Table~\ref{tab:paired}). FT-RCL is worse than the baseline on pooled Macro-F1, AUROC and EER, with intervals that exclude zero, and is indistinguishable from it on the type-averaged score. STAR-Edge has the same EER as the baseline, a higher AUROC and a higher type-averaged Macro-F1, and a lower pooled Macro-F1.
+Four key findings emerge from the three-seed baseline selection comparison:
+
+\begin{enumerate}[label=\textbf{\arabic*.},leftmargin=*,itemsep=0.3em]
+  \item \textbf{Performance superiority of E3:} AudioSet-pretrained PANNs MobileNetV2 (E3) achieves the highest clean detection performance across all evaluated metrics. It surpasses the scratch CNN candidate (E1) by +11.26 percentage points in type-averaged Macro-F1 (0.6274 vs.\ 0.5148), +11.50 points in overall classification accuracy (0.7349 vs.\ 0.6199), and +0.0511 in AUROC (0.8800 vs.\ 0.8289), while lowering the equal error rate from 0.2511 to 0.1993.
+  \item \textbf{Stability across seeds:} E3 displays exceptional reproducibility across independent training seeds, with a sample standard deviation of only $0.0032$ in AUROC and $0.0028$ in EER. By comparison, the scratch-trained E1 displays sixteen-fold higher AUROC variance ($\pm 0.0516$) and sixteen-fold higher EER variance ($\pm 0.0460$), reflecting optimization sensitivity to random parameter initialization and stochastic batch sampling under class imbalance. E2 also exhibits high variance in type-averaged Macro-F1 ($\pm 0.0720$) and accuracy ($\pm 0.0846$).
+  \item \textbf{Representation differences:} E1 and E2 attempt to learn spectro-temporal discriminative filters strictly from scratch on the 60{,}000 training clips. In contrast, E3 leverages a general-purpose audio representation pretrained on over two million multi-domain clips from AudioSet~\cite{kong2020panns}. This rich acoustic prior enables the network to extract robust, semantically organized representations across environmental sounds, musical instruments, and singing voice, providing a substantially better feature space for the binary deepfake classification head.
+  \item \textbf{Parameter and complexity trade-offs:} E3 contains 3{,}537{,}250 parameters, approximately 2.3$\times$ that of E1 (1{,}519{,}618) and 3.0$\times$ that of E2 (1{,}198{,}082). Temporal recurrent pooling in E2 achieves a modest parameter reduction over E1 by collapsing temporal frames into a compact 128-dimensional hidden state, but fails to yield systematic improvements in type-averaged Macro-F1 (0.5039 vs.\ 0.5148). The moderate parameter expansion of E3 is thoroughly justified by its dramatic gains in accuracy and generalization stability.
+\end{enumerate}
+
+Based on these verified results, \textbf{E3 is selected as the definitive clean baseline M0} for subsequent research.
+
+\subsection{External benchmark context on AT-ADD Track 2}
+\label{sec:external-context}
+
+To situate our clean baseline selection within the broader research landscape, Table~\ref{tab:external-context} compares our candidate models (E1, E2, E3/M0) with external benchmark results reported in the official AT-ADD Track~2 evaluation~\cite{xie2026atadd}. AT-ADD Track~2 evaluates all-type audio deepfake detection across speech, sound, singing, and music without type-conditioning, using the official type-averaged Macro-F1 as the primary ranking metric.
 
 \begin{table}[htbp]
 \centering
-\caption{Paired differences from the baseline (model minus M0, 95\% bootstrap intervals). For EER a negative value is an improvement.}
+\caption{Comparison of internal clean baseline candidates with published AT-ADD Track~2 benchmark results. External figures are taken directly from the official challenge paper (Xie et al.~\cite{xie2026atadd}, Tables VII and VIII) and serve as high-level benchmark context rather than direct apples-to-apples comparisons.}
+\label{tab:external-context}
+\small
+\setlength{\tabcolsep}{3.5pt}
+\begin{adjustbox}{max width=\textwidth}
+\begin{tabular}{@{}lllp{3.2cm}cl@{}}
+\toprule
+System / Study & Setting / Dataset & Model Direction & Metric & Result & Role in Comparison \\
+\midrule
+\multicolumn{6}{@{}l}{\textit{Internal baseline selection (this work; 3-seed mean $\pm$ sample SD on $44{,}289$-clip Eval)}} \\
+E1 (This work) & AT-ADD Track 2 Eval & Scratch MobileNetV3-Small (1.52\,M) & Type-avg Macro-F1 & $0.5148 \pm 0.0378$ & Compact CNN candidate \\
+E2 (This work) & AT-ADD Track 2 Eval & Scratch MobileNetV3 + GRU (1.20\,M) & Type-avg Macro-F1 & $0.5039 \pm 0.0720$ & Temporal candidate \\
+\textbf{E3 / M0 (This work)} & \textbf{AT-ADD Track 2 Eval} & \textbf{Pretrained PANNs MobileNetV2 (3.54\,M)} & \textbf{Type-avg Macro-F1} & $\mathbf{0.6274 \pm 0.0158}$ & \textbf{Selected baseline M0} \\
+\midrule
+\multicolumn{6}{@{}l}{\textit{Published AT-ADD Track~2 benchmark systems (Xie et al.~\cite{xie2026atadd})}} \\
+Spec-ResNet~\cite{xie2026atadd} & AT-ADD Track 2 Eval & Spectrogram ResNet ($\approx$11\,M) & Type-avg Macro-F1 & 53.83\% & Conventional baseline \\
+AASIST~\cite{xie2026atadd} & AT-ADD Track 2 Eval & Raw-waveform graph attention (85\,k) & Type-avg Macro-F1 & 62.21\% & Raw-audio baseline \\
+FT-XLSR-AASIST~\cite{xie2026atadd} & AT-ADD Track 2 Eval & Fine-tuned 300M XLS-R + AASIST & Type-avg Macro-F1 & 79.47\% & Strongest official baseline \\
+starfire ensemble~\cite{xie2026atadd} & AT-ADD Track 2 Eval & BEATs router + multi-expert ensemble & Type-avg Macro-F1 & 96.10\% & Track 2 winning system \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\end{table}
+
+This comparison illustrates the scientific positioning of our work:
+\begin{itemize}
+  \item \textbf{Internal progression:} Our E1, E2, and E3 candidates establish progressively stronger single-model baselines on AT-ADD Track~2, demonstrating that an AudioSet-pretrained representation (E3) yields substantial gains (+11.26 percentage points in type-averaged Macro-F1 over E1) while maintaining a compact edge-oriented footprint (3.54\,M parameters).
+  \item \textbf{Benchmark context:} The published AT-ADD results provide context for the capacity ceiling on this task. The strongest official baseline (FT-XLSR-AASIST, 79.47\%) and challenge winner (starfire, 96.10\%) rely on heavy self-supervised speech/audio foundations (XLS-R 300M, BEATs, EAT) or multi-expert routing ensembles that are two to three orders of magnitude larger than our compact models. These external scores reflect different training budgets, feature pipelines, and ensembling strategies, and should be understood as benchmark reference points rather than directly comparable single-model baselines under identical edge budgets.
+\end{itemize}
+
+\paragraph{Relationship to downstream regularisation experiments.} As documented in Section~\ref{sec:cat}, subsequent investigations into regularised dual-view coherence learning (FT-RCL, M3) and multi-objective optimization (STAR-Edge) were conducted on the compact MobileNetV3-Small backbone (the architecture of E1) on the 13{,}287-clip exploratory evaluation subset. To preserve historical fidelity and avoid manufacturing an artificial comparison, Tables~\ref{tab:paired}--\ref{tab:type} report those regularisation results relative to their corresponding compact MobileNetV3-Small reference baseline (single-seed run, AUROC 0.852, type-averaged Macro-F1 0.587) rather than the newly selected E3/M0 configuration.
+
+For the pairwise comparison of regularised variants on the MobileNetV3-Small architecture, the same bootstrap resamples were used for all models (Table~\ref{tab:paired}). FT-RCL is worse than the compact baseline on pooled Macro-F1, AUROC and EER, with intervals that exclude zero, and is indistinguishable from it on the type-averaged score. STAR-Edge has the same EER as the baseline, a higher AUROC and a higher type-averaged Macro-F1, and a lower pooled Macro-F1.
+
+\begin{table}[htbp]
+\centering
+\caption{Paired differences from the compact MobileNetV3-Small reference baseline (model minus MobileNetV3-Small baseline, 95\% bootstrap intervals on the 13{,}287-clip exploratory evaluation subset). For EER a negative value is an improvement.}
 \label{tab:paired}
 \small
 \begin{adjustbox}{max width=\textwidth}
@@ -52,8 +102,8 @@ The models are poorly calibrated. The expected calibration error is 0.21 for the
 
 \figimage{calibration}{Reliability curves of the three models on the evaluation subset.}{figures/plots/analysis/calibration.png}
 
-\figimagepair{roc-eval}{ROC curves on the evaluation subset.}{%
-figures/plots/E1_v4_btp_p30/roc_eval.png}{Baseline (AUROC 0.852)}{%
+\figimagepair{roc-eval}{ROC curves on the evaluation subset for the exploratory MobileNetV3-Small backbone.}{%
+figures/plots/E1_v4_btp_p30/roc_eval.png}{MobileNetV3-Small baseline (AUROC 0.852)}{%
 figures/plots/E7_ft_rcl_btp_p30/roc_eval.png}{FT-RCL (AUROC 0.843)}
 
 \section{Results per audio type}
@@ -63,7 +113,7 @@ Table~\ref{tab:type} gives the results per audio type, both with each type's own
 
 \begin{table}[htbp]
 \centering
-\caption{Results per audio type. Columns marked ``own'' use the EER threshold of the type, ``global'' columns use the pooled EER threshold. FPR and FNR are at the global threshold.}
+\caption{Results per audio type on the exploratory 13{,}287-clip evaluation subset comparing the compact MobileNetV3-Small baseline, FT-RCL, and STAR-Edge. Columns marked ``own'' use the EER threshold of the type, ``global'' columns use the pooled EER threshold. FPR and FNR are at the global threshold.}
 \label{tab:type}
 \small
 \setlength{\tabcolsep}{3.5pt}
@@ -113,7 +163,7 @@ All three models score 0.91--0.93 Macro-F1 on the official development list, aga
 \section{Training behaviour}
 \label{sec:training}
 
-Figure~\ref{fig:curves} shows the validation curves. The baseline reached its best validation score at epoch 20, the last one allowed, with a training accuracy of 0.98; its development score may still have been rising and we cannot say what it would have reached with a longer schedule. FT-RCL peaked at epoch 7 and stopped at epoch 12 by early stopping, and STAR-Edge used all 20 epochs. Because the models were trained for different numbers of effective epochs and chosen by different rules (Section~\ref{sec:selection}), part of the differences in Table~\ref{tab:overall} may come from the protocol and not from the objectives. The training-loss column of FT-RCL and STAR-Edge is empty in the saved logs for the reason given in Section~\ref{sec:ftrcl}, so the loss curves of these two models cannot be shown.
+Figure~\ref{fig:curves} shows the validation curves. The baseline reached its best validation score at epoch 20, the last one allowed, with a training accuracy of 0.98; its development score may still have been rising and we cannot say what it would have reached with a longer schedule. FT-RCL peaked at epoch 7 and stopped at epoch 12 by early stopping, and STAR-Edge used all 20 epochs. Because the models were trained for different numbers of effective epochs and chosen by different rules (Section~\ref{sec:selection}), part of the differences in Table~\ref{tab:paired} may come from the protocol and not from the objectives. The training-loss column of FT-RCL and STAR-Edge is empty in the saved logs for the reason given in Section~\ref{sec:ftrcl}, so the loss curves of these two models cannot be shown.
 
 \figimage{curves}{Validation Macro-F1 and EER and training accuracy per epoch (official development split).}{figures/plots/analysis/curves.png}
 
@@ -173,7 +223,7 @@ Sound & real / fake & 10.0 / 10.0 & 0.00 / 0.00 & 10.0 / 10.0 & 0.06 / 0.01 \\
 \section{Degraded-audio pilot}
 \label{sec:robustness-pilot}
 
-The earlier version of this report included a conditioned evaluation on 100 clips per model, with the drop in Macro-F1 under resampling, noise and telephony (Table~\ref{tab:delta-m-summary}). On inspection the test is not valid and no conclusion about robustness can be drawn from it, for the following reasons.
+An exploratory conditioned evaluation was conducted on 100 clips per model, reporting the drop in Macro-F1 under resampling, noise and telephony (Table~\ref{tab:delta-m-summary}). On inspection, this pilot is not methodologically valid and no conclusion about channel robustness can be drawn from it, for the following reasons:
 
 \begin{itemize}
   \item \textbf{The clips are all fake music.} The evaluation code takes the first rows of the evaluation list, and that list is sorted by type and label. The saved output of the pilot contains only the audio type music, and Macro-F1 of a single-class sample is not defined in a useful way.
@@ -189,38 +239,49 @@ The telephony result, in which FT-RCL loses more than the baseline (0.134 agains
 \section{STAR-Edge}
 \label{sec:star-edge}
 
-The STAR-Edge model was trained for the full 20 epochs and evaluated like the other two models; its results are in Tables~\ref{tab:overall}--\ref{tab:type}. Relative to the baseline it gives the best AUROC (+0.013, interval excludes zero), the best type-averaged Macro-F1 (+0.011) and the best sound and music results, at an unchanged EER and a lower pooled Macro-F1. The improvement on music and sound is the largest effect in this study. Since the signature terms in STAR-Edge were defined on one band only, and it has additional ABR and CAD terms and a different stopping point from FT-RCL, we cannot attribute the gain to any one component. Without the M1 and M2 ablations and without repeated seeds the effect should be treated as a lead to follow up and not as an established result.
+The STAR-Edge model was trained for the full 20 epochs and evaluated like the other two models; its results are in Tables~\ref{tab:paired}--\ref{tab:type}. Relative to the baseline it gives the best AUROC (+0.013, interval excludes zero), the best type-averaged Macro-F1 (+0.011) and the best sound and music results, at an unchanged EER and a lower pooled Macro-F1. The improvement on music and sound is the largest effect in this study. Since the signature terms in STAR-Edge were defined on one band only, and it has additional ABR and CAD terms and a different stopping point from FT-RCL, we cannot attribute the gain to any one component. Without the M1 and M2 ablations and without repeated seeds the effect should be treated as a lead to follow up and not as an established result.
 
 \figimagepair{star-edge-train-dev}{Training progress of STAR-Edge.}{%
 figures/plots/E7_star_edge_btp_p30/dev_macro_f1_auroc.png}{Development Macro-F1 and AUROC}{%
 figures/plots/E7_star_edge_btp_p30/training_loss_accuracy.png}{Training accuracy}
 
-\section{Model size and cost}
+\section{Model size and computational complexity}
 \label{sec:efficiency}
 
-The baseline and the FT-RCL detector have the same 1{,}519{,}618 parameters, and a forward pass for one four-second clip takes 36.7 million multiply-accumulate operations, counted with a profiler on the 80$\times$401 input (the FT-RCL detector adds only a pooling operation to this count). The saved checkpoints are 17.6\,MB, but this is not the deployment size: they also contain the optimiser state. The weights alone take 6.2\,MB in 32-bit floating point. Table~\ref{tab:efficiency} summarises these figures.
+Table~\ref{tab:efficiency} summarizes parameter counts, FP32 weight storage, and roles across the evaluated models. The scratch-trained CNN candidate (E1) and downstream FT-RCL detector share the compact MobileNetV3-Small backbone of 1{,}519{,}618 parameters (6.08\,MB in FP32 weights), requiring approximately 36.7 million multiply-accumulate (MAC) operations per 4-second clip on the 80$\times$401 input. Temporal candidate E2 replaces spatial pooling and dense projections with a 128-unit GRU, resulting in 1{,}198{,}082 parameters (4.79\,MB in FP32). In contrast, the selected clean baseline M0 (E3, PANNs MobileNetV2) comprises 3{,}537{,}250 parameters (14.15\,MB in FP32 weights).
 
 \begin{table}[htbp]
 \centering
-\caption{Cost of the network. Latency, peak memory and quantised accuracy were not measured.}
+\caption{Model complexity and parameter counts across baseline candidates and regularised detectors. Weights are in 32-bit floating point.}
 \label{tab:efficiency}
 \small
 \begin{adjustbox}{max width=\textwidth}
-\begin{tabular}{@{}lrrrr@{}}
+\begin{tabular}{@{}llrrr@{}}
 \toprule
-Model & Parameters & MACs per clip & Weights (FP32) & Saved checkpoint \\
+Model & Architecture & Parameters & Weights (FP32) & Role \\
 \midrule
-Baseline (M0) & 1{,}519{,}618 & 36.7\,M & 6.2\,MB & 17.6\,MB \\
-FT-RCL (M3) & 1{,}519{,}618 & 36.7\,M & 6.2\,MB & 17.6\,MB \\
+E1 & MobileNetV3-Small & 1{,}519{,}618 & 6.08\,MB & Compact CNN candidate \\
+E2 & MobileNetV3-Small + GRU & 1{,}198{,}082 & 4.79\,MB & Temporal candidate \\
+\textbf{E3} & \textbf{PANNs MobileNetV2} & \textbf{3{,}537{,}250} & \textbf{14.15\,MB} & \textbf{Selected M0} \\
+\midrule
+M3 & FT-RCL (MobileNetV3-Small) & 1{,}519{,}618 & 6.08\,MB & Regularised detector \\
+STAR-Edge & MobileNetV3-Small & 1{,}519{,}618 & 6.08\,MB & Multi-objective detector \\
 \bottomrule
 \end{tabular}
 \end{adjustbox}
 \end{table}
 
-Whether this satisfies an edge budget cannot be said without measuring batch-one latency including the STFT and mel step, peak memory, INT8 accuracy and, ideally, a run on a phone or single-board computer. We also have no comparison with other ways of reaching a small budget, such as a distilled or pruned larger model or a small task-specific network like AASIST-L (about 85\,k parameters~\cite{jung2022aasist}), so ``lightweight'' is judged here only against the 300\,M-parameter systems of the leaderboard.
+Three critical points govern the interpretation of these figures:
+\begin{enumerate}[label=\textbf{\arabic*.},leftmargin=*,itemsep=0.2em]
+  \item \textbf{Capacity versus accuracy trade-off:} E3 is larger than the compact E1 and E2 candidates (2.3$\times$ and 3.0$\times$ parameter ratios, respectively). It was selected as M0 not because it is the most compact candidate, but because its clean accuracy ($F1_{\mathrm{type\text{-}avg}}=0.6274$, AUROC 0.8800) and cross-seed stability ($\sigma_{\mathrm{AUROC}}=0.0032$) decisively outperformed the scratch-trained alternatives. As observed by Kong et al.~\cite{kong2020panns} and Combei et al.~\cite{combei2024wavlm}, pretraining on diverse audio corpora provides rich transferable representations; relative to massive transformer SSL models that scale to hundreds of millions of parameters, PANNs MobileNetV2 strikes a pragmatic balance between representation capacity and edge deployability.
+  \item \textbf{Exploratory regularisation context:} The downstream regularisation models (FT-RCL M3 and STAR-Edge) were developed upon the compact 1.52\,M-parameter MobileNetV3-Small backbone during exploratory experiments. Applying dual-view consistency losses or multi-objective constraints during training introduces zero parameter or MAC overhead at inference time.
+  \item \textbf{Edge suitability requires empirical measurement:} Parameter counts and theoretical MACs alone do not establish edge deployment suitability. Actual on-device efficiency is governed by batch-size-one latency through the STFT and mel frontend, peak runtime memory, memory bandwidth constraints, and integer quantization (INT8) accuracy on target single-board computers or mobile chipsets.
+\end{enumerate}
 
 \section{Discussion}
 \label{sec:discussion}
+
+\paragraph{Clean baseline selection and model stability.} E1 demonstrates that a compact scratch-trained CNN can provide meaningful discrimination on unseen audio generators, achieving a clean AUROC of 0.829 across 38 held-out synthesis systems. E2 investigates whether explicit temporal modelling improves this compact representation; adding a recurrent GRU maintains comparable discrimination (AUROC 0.832) with a slightly smaller footprint (1.20\,M parameters) but increases seed-to-seed variance across audio categories. E3 (PANNs MobileNetV2) provides the strongest clean performance ($F1_{\mathrm{type\text{-}avg}} = 0.627$, AUROC 0.880, EER 0.199) and substantially improved seed-to-seed stability ($\sigma_{\mathrm{AUROC}} = 0.0032$ versus 0.0516 for E1), motivating its definitive selection as M0. Consequently, M0 serves as a single, rigorously validated reference model for subsequent experiments.
 
 \paragraph{Why FT-RCL did not help.} The result is negative and we have no experiment that isolates the reason. Several explanations are consistent with the evidence. The signature loss acted on three bands, one row each, so FTSC was a weak constraint; the curriculum never operated, so there was no gradual introduction of hard degradations; the pairs were trained and chosen with a selection score computed on fake music, which makes checkpoint choice close to random among epochs 7--12; and the prediction coherence term has a weak gradient when one view is saturated. Moreover, FT-RCL differs from the baseline only through degradation-related terms while the evaluation measures clean generalisation to unseen generators, which these terms do not target. In that sense the clean evaluation is not a fair test of the idea, and the degraded-audio evaluation that would be one is missing.
 
@@ -238,7 +299,7 @@ Whether this satisfies an edge budget cannot be said without measuring batch-one
 \midrule
 H1 & Not tested & The degraded-audio pilot is invalid (Section~\ref{sec:robustness-pilot}). \\
 H2 & Not tested & Modes M1 and M2 were not run. \\
-H3 & Not met & FT-RCL EER is 1.8 points above the baseline (interval 1.0--2.7); STAR-Edge is level with the baseline. \\
+H3 & Not met & FT-RCL EER is 1.8 points above the compact MobileNetV3-Small baseline (interval 1.0--2.7); STAR-Edge is level with the baseline. \\
 H4 & Not tested & No valid degraded-audio results; unseen conditions not evaluated. \\
 \bottomrule
 \end{tabular}

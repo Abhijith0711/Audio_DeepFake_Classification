@@ -1,11 +1,11 @@
 \begin{table}[htbp]
 \centering
-\caption{Degraded-audio pilot of the earlier version: mean $\Delta$Macro-F1 (clean minus conditioned) on 100 fake music clips. Shown for completeness; the values are not valid evidence (Section~\ref{sec:robustness-pilot}).}
+\caption{Degraded-audio pilot evaluation: mean $\Delta$Macro-F1 (clean minus conditioned) on 100 fake music clips. Shown for completeness; the values are not valid evidence (Section~\ref{sec:robustness-pilot}).}
 \label{tab:delta-m-summary}
 \small
 \begin{tabular}{@{}llrr@{}}
 \toprule
-Condition & Severity & Baseline M0 & FT-RCL M3 \\
+Condition & Severity & MobileNetV3 Baseline & FT-RCL M3 \\
 \midrule
 Band-limit 300--3400\,Hz & 3 & 0.115 & 0.134 \\
 Resample via 16\,kHz & 1 & 0.000 & 0.000 \\
