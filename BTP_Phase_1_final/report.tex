@@ -1,0 +1,218 @@
+\documentclass[12pt,a4paper]{report}
+
+% ---------------------------------------------------------------------------
+% Packages
+% ---------------------------------------------------------------------------
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage[a4paper,left=3cm,right=2.5cm,top=2.5cm,bottom=2.5cm]{geometry}
+\usepackage{amsmath,amssymb,setspace}
+\usepackage{graphicx,booktabs,array,subcaption,caption,enumitem,multirow}
+\usepackage{tikz}
+\input{tikz/styles.tex}
+\usepackage{microtype}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage[nottoc]{tocbibind}
+
+\usepackage[style=ieee, backend=bibtex]{biblatex}
+\addbibresource{bib.bib}
+
+\usepackage[hidelinks,bookmarksnumbered,
+  pdftitle={Lightweight, Compression-Robust Audio Deepfake Detection for Edge Deployment},
+  pdfauthor={Nikkath Zabeen Shaik, Bhuvan S M, Abhijith Jayan, Joshi Kshitij Santhosh}]{hyperref}
+
+\input{macros.tex}
+
+% ---------------------------------------------------------------------------
+% Document-wide formatting
+% ---------------------------------------------------------------------------
+\onehalfspacing
+\setlength{\emergencystretch}{2em}
+\setlength{\tabcolsep}{7pt}
+\setlist{itemsep=2pt,topsep=4pt,parsep=0pt}
+\setlist[description]{leftmargin=!,labelwidth=1.6cm}
+
+\captionsetup{font=small,labelfont=bf,labelsep=period,justification=justified,
+  singlelinecheck=true,skip=6pt}
+\captionsetup[table]{position=above}
+\captionsetup[subfigure]{font=footnotesize,labelfont=rm,justification=centering}
+
+% Floats and tables are set single-spaced.
+\makeatletter
+\g@addto@macro\@floatboxreset\singlespacing
+\makeatother
+
+% Chapter headings: numbered chapters in title case, unnumbered front-matter
+% chapters centred in capitals.
+\titleformat{\chapter}[display]{\normalfont\LARGE\bfseries}{\chaptertitlename\ \thechapter}{10pt}{\LARGE}
+\titleformat{name=\chapter,numberless}[block]{\normalfont\Large\bfseries\centering}{}{0pt}{\MakeUppercase}
+\titlespacing*{\chapter}{0pt}{-10pt}{24pt}
+\titleformat{\section}{\normalfont\Large\bfseries\raggedright}{\thesection}{0.8em}{}
+\titleformat{\subsection}{\normalfont\large\bfseries\raggedright}{\thesubsection}{0.8em}{}
+
+% Running headers
+\renewcommand{\chaptermark}[1]{\markboth{\thechapter.\ #1}{}}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\itshape\nouppercase{\leftmark}}
+\fancyhead[R]{\small\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+\setlength{\headheight}{14.5pt}
+\fancypagestyle{plain}{\fancyhf{}\fancyfoot[C]{\small\thepage}\renewcommand{\headrulewidth}{0pt}}
+
+% ---------------------------------------------------------------------------
+% Project details (title page, declaration, certificate)
+% ---------------------------------------------------------------------------
+\newcommand{\StudentNames}{Nikkath Zabeen Shaik, Bhuvan S M, Abhijith Jayan, and Joshi Kshitij Santhosh}
+\newcommand{\StudentRolls}{2023BCS0060, 2023BCS0198, 2023BCS0109, and 2023BCS0087}
+\newcommand{\SupervisorName}{Dr.\ Sivaiah Bellamkonda}
+\newcommand{\ProjectTitle}{Lightweight, Compression-Robust Audio Deepfake Detection for Edge Deployment}
+\newcommand{\DepartmentName}{Computer Science and Engineering}
+\newcommand{\HoDName}{Dr.\ Christina Terese Joseph}
+\newcommand{\SubmissionDate}{October 2026}
+\newcommand{\StudentEntry}[2]{{\large\bfseries #1}\quad{\large (Roll No.\ #2)}}
+
+\begin{document}
+
+\pagestyle{plain}
+\pagenumbering{roman}
+
+% ---------------------------------------------------------------------------
+% Title page
+% ---------------------------------------------------------------------------
+\begin{titlepage}
+\singlespacing
+\enlargethispage{1.5cm}
+\thispagestyle{empty}
+\begin{center}
+\vspace*{0.4cm}
+{\linespread{1.2}\selectfont\Large\bfseries LIGHTWEIGHT, COMPRESSION-ROBUST AUDIO DEEPFAKE DETECTION FOR EDGE DEPLOYMENT\par}\vspace{0.9cm}
+A Project Report Submitted\\
+in Partial Fulfilment of the Requirements\\
+for the Degree of\\[0.35cm]
+{\Large\bfseries Bachelor of Technology}\\[0.2cm]
+{\large\bfseries in Computer Science and Engineering}\\[0.75cm]
+{\em by}\\[0.35cm]
+\begin{tabular}{c}
+\StudentEntry{Nikkath Zabeen Shaik}{2023BCS0060} \\[0.2cm]
+\StudentEntry{Bhuvan S M}{2023BCS0198} \\[0.2cm]
+\StudentEntry{Abhijith Jayan}{2023BCS0109} \\[0.2cm]
+\StudentEntry{Joshi Kshitij Santhosh}{2023BCS0087}
+\end{tabular}\\[0.65cm]
+Under the Supervision of\\[0.25cm]
+{\large\bfseries \SupervisorName}\par
+\vfill
+\includegraphics[width=5.2cm,height=2.6cm,keepaspectratio]{logo2.jpg}\\[0.35cm]
+{\bfseries DEPARTMENT OF COMPUTER SCIENCE AND ENGINEERING}\\
+{\bfseries INDIAN INSTITUTE OF INFORMATION TECHNOLOGY, KOTTAYAM-686635, INDIA}\\[0.25cm]
+{\it \SubmissionDate}
+\end{center}
+\end{titlepage}
+\setcounter{page}{2} % the title page counts as page i (not printed)
+
+% ---------------------------------------------------------------------------
+% Declaration
+% ---------------------------------------------------------------------------
+\chapter*{Declaration}
+\noindent
+We, \textbf{\StudentNames} (Roll No: \textbf{\StudentRolls}), hereby declare that this report entitled ``\ProjectTitle'', submitted to the Indian Institute of Information Technology Kottayam in partial fulfilment of the requirements for the degree of \textbf{Bachelor of Technology in \DepartmentName}, is an original work carried out by us under the supervision of \textbf{\SupervisorName} and has not formed the basis for the award of any degree or diploma, in this or any other institution or university. We have sincerely tried to uphold academic ethics and honesty. Whenever external information, a statement, or a result is used, it has been duly acknowledged and cited.
+
+\vspace{2cm}
+\noindent
+\begin{minipage}[t]{0.52\textwidth}
+Kottayam-686635\\
+\SubmissionDate
+\end{minipage}%
+\hfill
+\begin{minipage}[t]{0.45\textwidth}
+\raggedleft
+\textbf{Nikkath Zabeen Shaik}\\
+\textbf{Bhuvan S M}\\
+\textbf{Abhijith Jayan}\\
+\textbf{Joshi Kshitij Santhosh}
+\end{minipage}
+
+% ---------------------------------------------------------------------------
+% Certificate
+% ---------------------------------------------------------------------------
+\clearpage
+\chapter*{Certificate}
+\noindent
+This is to certify that the work contained in this project report entitled ``\ProjectTitle'', submitted by \textbf{\StudentNames} (Roll No: \textbf{\StudentRolls}) to the Indian Institute of Information Technology Kottayam in partial fulfilment of the requirements for the degree of \textbf{Bachelor of Technology in \DepartmentName}, has been carried out by them under my supervision and has not been submitted elsewhere for the award of any degree.
+
+\vspace{2cm}
+\noindent
+\begin{minipage}[t]{0.52\textwidth}
+Kottayam-686635\\
+\SubmissionDate
+\end{minipage}%
+\hfill
+\begin{minipage}[t]{0.45\textwidth}
+\raggedleft
+\SupervisorName\\
+Project Supervisor
+\end{minipage}
+
+\vspace{1.8cm}
+\noindent\hfill
+\begin{minipage}{0.7\textwidth}
+\raggedleft
+\HoDName\\
+Head of the Department\\
+Department of \DepartmentName
+\end{minipage}
+
+% ---------------------------------------------------------------------------
+% Acknowledgment
+% ---------------------------------------------------------------------------
+\clearpage
+\chapter*{Acknowledgment}
+\noindent
+We express our sincere gratitude to our project supervisor, \textbf{\SupervisorName}, for guidance, feedback, and support throughout this work. We thank \textbf{\HoDName}, Head of the Department of \DepartmentName, IIIT Kottayam, and the faculty and staff of the institute for providing the academic environment and resources needed to complete this project. We also thank our families and peers for their encouragement during the course of this Bachelor of Technology project.
+
+% ---------------------------------------------------------------------------
+% Abstract
+% ---------------------------------------------------------------------------
+\clearpage
+\chapter*{Abstract}
+\begingroup
+\setlength{\parskip}{0.4cm}
+\noindent\input{abstract.tex}
+\endgroup
+
+\vspace{0.3cm}
+\noindent\textbf{Keywords:} audio deepfake detection; all-type audio; AT-ADD Track~2; robustness coherence learning; prediction coherence; log-mel spectrogram; MobileNetV3-Small; codec and channel degradation; severity curriculum; edge deployment; equal error rate.
+
+% ---------------------------------------------------------------------------
+% Contents, lists, abbreviations and symbols
+% ---------------------------------------------------------------------------
+\clearpage
+\tableofcontents
+\clearpage
+\listoffigures
+\clearpage
+\listoftables
+\clearpage
+\input{abbreviations.tex}
+
+% ---------------------------------------------------------------------------
+% Main matter
+% ---------------------------------------------------------------------------
+\clearpage
+\pagenumbering{arabic}
+\pagestyle{fancy}
+
+\input{introduction.tex}
+\input{literature.tex}
+\input{methodology.tex}
+\input{results.tex}
+\input{conclusion.tex}
+
+\appendix
+\input{appendix.tex}
+
+\printbibliography[title={References}, heading=bibintoc]
+
+\end{document}

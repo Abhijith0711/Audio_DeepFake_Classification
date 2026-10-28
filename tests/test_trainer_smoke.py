@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import pytest
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, Dataset
@@ -8,14 +9,14 @@ from src.datasets.atadd_manifest_dataset import collate_manifest_batch, collate_
 from src.preprocessing.preprocess_atadd_v4 import GPULogMel
 from src.robustness.conditions import all_training_conditions
 from src.training.frontend import MelFrontend
+from src.training.schedulers.robustness_curriculum import early_stop_floor, should_early_stop
 from src.training.trainer import Trainer
 
 SR, SECONDS = 8000, 1
 CONFIG = {
     "audio": {"sample_rate": SR, "segment_seconds": SECONDS},
-    "training": {"learning_rate": 1e-3, "weight_decay": 1e-4, "seed": 0},
-    "selection": {"delta_num_samples": 16},
-    "ft_rcl": {},
+    "training": {"learning_rate": 1e-3, "weight_decay": 1e-4, "seed": 0, "min_epoch_for_early_stop": 14},
+    "ft_rcl": {"curriculum": {"epoch_milestones": [1, 6, 13], "severity_milestones": [1, 3, 4]}},
 }
 
 
@@ -51,22 +52,21 @@ def _trainer(tmp_path, mode):
     return Trainer(CONFIG, tmp_path, tmp_path, tmp_path, frontend, device, mode=mode)
 
 
-def test_m3_training_step_is_finite_and_updates_weights(tmp_path):
-    trainer = _trainer(tmp_path, "M3")
+@pytest.mark.parametrize("mode", ["M0", "M1", "M2", "M3"])
+def test_mode_training_step_is_finite_and_updates_weights(tmp_path, mode):
+    trainer = _trainer(tmp_path, mode)
     before = [p.detach().clone() for p in trainer.model.parameters()]
-    loader = DataLoader(_Paired(), batch_size=4, collate_fn=collate_paired_batch)
+    if mode == "M0":
+        loader = DataLoader(_Dev(), batch_size=4, collate_fn=collate_manifest_batch)
+    else:
+        loader = DataLoader(_Paired(), batch_size=4, collate_fn=collate_paired_batch)
     loss, _ = trainer.train_one_epoch(loader, nn.CrossEntropyLoss(), epoch=1)
     assert np.isfinite(loss)
     assert any(not torch.equal(b, p) for b, p in zip(before, trainer.model.parameters()))
 
 
-def test_dev_delta_uses_stratified_subset_and_is_non_negative(tmp_path, monkeypatch):
-    # Keep the test independent of ffmpeg; MP3 without ffmpeg is covered in test_bugfixes.py.
-    no_mp3 = [c for c in all_training_conditions() if c.family != "mp3_codec"]
-    monkeypatch.setattr("src.training.trainer.all_training_conditions", lambda: no_mp3)
-    trainer = _trainer(tmp_path, "M3")
-    dev_loader = DataLoader(_Dev(), batch_size=8, collate_fn=collate_manifest_batch)
-    delta = trainer.estimate_dev_delta_macro_f1(dev_loader)
-    assert delta >= 0.0
-    labels = trainer._delta_cache[2]
-    assert set(labels.tolist()) == {0, 1}
+def test_early_stop_waits_until_the_epoch_after_severity_4():
+    assert early_stop_floor([1, 6, 13]) == 14
+    assert should_early_stop(13, epochs_without_improvement=20, patience=5, min_epoch=14) is False
+    assert should_early_stop(14, epochs_without_improvement=5, patience=5, min_epoch=14) is True
+    assert should_early_stop(14, epochs_without_improvement=4, patience=5, min_epoch=14) is False

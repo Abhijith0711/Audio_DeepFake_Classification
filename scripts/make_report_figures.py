@@ -15,9 +15,9 @@ TAB = ROOT / "results" / "tables"
 OUT = ROOT / "report" / "figures" / "plots" / "analysis"
 OUT.mkdir(parents=True, exist_ok=True)
 
-IDS = ["E1_v4_btp_p30", "E7_ft_rcl_btp_p30", "E7_star_edge_btp_p30"]
-NAME = dict(zip(IDS, ["Baseline (M0)", "FT-RCL (M3)", "STAR-Edge"]))
-COL = dict(zip(IDS, ["#0072B2", "#D55E00", "#009E73"]))
+IDS = ["E1_v4_btp_p30", "E7_ft_rcl_btp_p30"]
+NAME = dict(zip(IDS, ["Baseline (M0)", "FT-RCL (M3)"]))
+COL = dict(zip(IDS, ["#0072B2", "#D55E00"]))
 plt.rcParams.update({"font.family": "serif", "font.size": 10, "axes.spines.top": False, "axes.spines.right": False, "savefig.dpi": 300})
 
 
@@ -39,10 +39,11 @@ def per_type():
     types = ["speech", "singing", "music", "sound"]
     fig, ax = plt.subplots(1, 2, figsize=(10, 3.3))
     w = 0.26
+    center = (len(IDS) - 1) / 2
     for ax_, col, ttl in zip(ax, ["eer_own_threshold", "macro_f1_global_thr"], ["EER per type (own threshold)", "Macro-F1 per type (one global threshold)"]):
         for j, i in enumerate(IDS):
             d = t[t.model == i].set_index("type").loc[types]
-            ax_.bar(np.arange(4) + (j - 1) * w, d[col], w, color=COL[i], label=NAME[i])
+            ax_.bar(np.arange(4) + (j - center) * w, d[col], w, color=COL[i], label=NAME[i])
         ax_.set_xticks(range(4))
         ax_.set_xticklabels(types)
         ax_.set_title(ttl, fontsize=10)
@@ -54,12 +55,13 @@ def per_type():
 
 def generators():
     g = pd.read_csv(TAB / "analysis" / "per_generator.csv")
-    a, b, c = (g[g.model == i].set_index("generator") for i in IDS)
-    order = a.sort_values("recall_global_thr").index
+    frames = [g[g.model == i].set_index("generator") for i in IDS]
+    order = frames[0].sort_values("recall_global_thr").index
     fig, ax = plt.subplots(figsize=(6.4, 8.2))
     y = np.arange(len(order))
-    for k, (d, i) in enumerate(zip((a, b, c), IDS)):
-        ax.barh(y + (k - 1) * 0.27, d.loc[order, "recall_global_thr"], 0.27, color=COL[i], label=NAME[i])
+    center = (len(IDS) - 1) / 2
+    for k, (frame, i) in enumerate(zip(frames, IDS)):
+        ax.barh(y + (k - center) * 0.27, frame.loc[order, "recall_global_thr"], 0.27, color=COL[i], label=NAME[i])
     ax.set_yticks(y)
     ax.set_yticklabels(order, fontsize=6.5)
     ax.set_xlabel("Fake recall at the pooled EER threshold")
@@ -102,7 +104,7 @@ def dev_vs_eval():
     rows = []
     for i in IDS:
         h = pd.read_csv(EXP / i / "training_history.csv")
-        dev = h.loc[h["best_J"].idxmax(), "dev_macro_f1"]
+        dev = h.loc[h["dev_macro_f1"].idxmax(), "dev_macro_f1"]
         ev = pd.read_csv(EXP / i / "eval_predictions_eval.csv")
         rows.append((NAME[i], dev, float(pd.read_json(EXP / i / "eval_metrics_eval.json", typ="series")["macro_f1"])))
     fig, ax = plt.subplots(figsize=(5.2, 3.2))

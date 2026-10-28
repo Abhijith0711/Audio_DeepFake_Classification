@@ -1,38 +1,28 @@
-import json
 import logging
 import time
 
 import numpy as np
 import pandas as pd
 import torch
-import torch.nn as nn
-from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from src.datasets.atadd_manifest_dataset import stratified_indices
 from src.evaluation.metrics import calculate_metrics
 from src.evaluation.plotting import save_training_curves
+from src.evaluation.prediction_analysis import type_average_f1
 from src.models.ft_rcl_detector import FTRCLDetector
 from src.models.mobilenet_v3_audio import MobileNetV3SmallAudio
-from src.robustness.conditions import all_training_conditions
-from src.robustness.degrade import degrade
 from src.training.losses.ft_rcl import ft_rcl_loss
-from src.training.losses.star_edge import abr_loss, channel_aux_loss, stc_loss
 from src.training.run_artifacts import (
     append_train_log,
-    print_metrics_table,
     save_training_history,
 )
-from src.training.schedulers.robustness_curriculum import max_severity_for_epoch, severity_eta
+from src.training.schedulers.robustness_curriculum import (
+    max_severity_for_epoch,
+    severity_eta,
+    should_early_stop,
+)
 
 logger = logging.getLogger(__name__)
-
-FAMILY_TO_ID = {
-    "resample": 0,
-    "mp3_codec": 1,
-    "additive_noise": 2,
-    "telephony": 3,
-}
 
 
 class Trainer:
@@ -54,32 +44,24 @@ class Trainer:
         self.device = device
         self.mode = mode
 
-        star = config.get("star_edge", {})
-        self.use_star = bool(star.get("enabled", False))
-        use_cad = bool(star.get("use_cad", False)) if self.use_star else False
-
         if mode == "M0":
             self.model = MobileNetV3SmallAudio(num_classes=2).to(device)
             self.subband = None
         else:
-            self.model = FTRCLDetector(num_classes=2, use_cad=use_cad).to(device)
+            self.model = FTRCLDetector(num_classes=2).to(device)
             self.subband = self.model.subband_pool
-
-        self.channel_head = None
-        if use_cad:
-            self.channel_head = nn.Linear(8, len(FAMILY_TO_ID)).to(device)
 
         self.history = []
         self.best_score = -1e9
         self.best_epoch = 0
 
         train_cfg = config["training"]
+        self.min_epoch_for_early_stop = int(train_cfg.get("min_epoch_for_early_stop", 1))
         self.amp_enabled = device.type == "cuda"
         self.scaler = torch.amp.GradScaler("cuda", enabled=self.amp_enabled)
 
         self.optimizer = torch.optim.AdamW(
-            list(self.model.parameters())
-            + (list(self.channel_head.parameters()) if self.channel_head else []),
+            self.model.parameters(),
             lr=train_cfg["learning_rate"],
             weight_decay=train_cfg["weight_decay"],
         )
@@ -100,14 +82,9 @@ class Trainer:
             "type_alpha",
             {"speech": 1.0, "singing": 1.0, "music": 0.3, "sound": 0.5},
         )
-        self.lambda_delta = config.get("selection", {}).get("lambda_delta", 0.5)
-        self.use_j_score = config.get("selection", {}).get("use_j_score", mode not in ("M0",))
-
         curriculum = ft_cfg.get("curriculum", {})
         self.epoch_milestones = curriculum.get("epoch_milestones", [1, 6, 13])
         self.severity_milestones = curriculum.get("severity_milestones", [1, 3, 4])
-
-        self.star_cfg = star
 
     def autocast(self):
         return torch.amp.autocast(
@@ -171,12 +148,12 @@ class Trainer:
                     else:
                         x_clean = self.frontend(clean_w)
                         x_deg = self.frontend(deg_w)
-                        logits_c, sig_c, u_c = self.model(
+                        logits_c, sig_c, _ = self.model(
                             x_clean,
                             waveforms=clean_w,
                             current_epoch=epoch,
                         )
-                        logits_d, sig_d, u_d = self.model(
+                        logits_d, sig_d, _ = self.model(
                             x_deg,
                             waveforms=deg_w,
                             current_epoch=epoch,
@@ -203,29 +180,6 @@ class Trainer:
                         criterion=criterion,
                         gate=self.gate,
                     )
-
-                    if self.use_star and self.mode == "M3":
-                        star = self.star_cfg
-                        p_c = torch.softmax(logits_c, dim=1)[:, 1]
-                        p_d = torch.softmax(logits_d, dim=1)[:, 1]
-
-                        if star.get("use_abr", True):
-                            loss = loss + star.get("rho", 0.2) * abr_loss(p_c, p_d, labels)
-
-                        if star.get("use_cad", False) and self.channel_head is not None:
-                            family_ids = torch.tensor(
-                                [FAMILY_TO_ID.get(m["condition_family"], 0) for m in meta],
-                                device=self.device,
-                                dtype=torch.long,
-                            )
-                            loss = loss + channel_aux_loss(
-                                self.channel_head(u_d.float()),
-                                family_ids,
-                                criterion,
-                            )
-
-                        if star.get("use_stc", False) and torch.rand(1).item() < 0.5:
-                            loss = loss + star.get("delta", 0.3) * stc_loss([sig_c, sig_d], [p_c, p_d])
 
                     logits = logits_c
 
@@ -299,63 +253,14 @@ class Trainer:
 
             total_items += x.size(0)
 
-        metrics, _ = calculate_metrics(all_labels, all_scores)
+        labels_np = np.asarray(all_labels)
+        scores_np = np.asarray(all_scores)
+        metrics, _ = calculate_metrics(labels_np, scores_np)
         metrics["loss"] = total_loss / max(total_items, 1)
-        return metrics, np.asarray(all_labels), np.asarray(all_scores), all_meta
-
-    def _build_delta_cache(self, dev_loader):
-        """Fixed, type/label-stratified dev subset and its degraded copies (built once)."""
-        selection = self.config.get("selection", {})
-        num_samples = int(selection.get("delta_num_samples", 384))
-        dataset = dev_loader.dataset
-        indices = stratified_indices(dataset.df, num_samples, seed=self.config["training"]["seed"])
-        conditions = [c for c in all_training_conditions() if c.family != "identity"]
-        sample_rate = self.config["audio"]["sample_rate"]
-
-        clean, degraded, labels = [], [], []
-
-        for rank, index in enumerate(indices):
-            waveform, label, meta = dataset[index]
-            clean_np = waveform.numpy()
-            deg_np, _ = degrade(
-                clean_np,
-                sample_rate,
-                conditions[rank % len(conditions)],
-                mode="deterministic",
-                source_id=meta["file_id"],
-            )
-            clean.append(clean_np)
-            degraded.append(deg_np)
-            labels.append(int(label))
-
-        return np.stack(clean), np.stack(degraded), np.asarray(labels)
-
-    def _score_waveforms(self, waveforms, batch_size=32):
-        scores = []
-
-        for start in range(0, len(waveforms), batch_size):
-            batch = torch.from_numpy(waveforms[start : start + batch_size]).to(self.device)
-            x = self.frontend(batch)
-            logits = self.model(x) if self.mode == "M0" else self.model(x)[0]
-            scores.extend(torch.softmax(logits.float(), dim=1)[:, 1].cpu().numpy().tolist())
-
-        return scores
-
-    @torch.no_grad()
-    def estimate_dev_delta_macro_f1(self, dev_loader):
-        """Clean-minus-degraded Macro-F1 on a fixed stratified dev subset, clamped at 0."""
-        if self.mode == "M0":
-            return 0.0
-
-        if getattr(self, "_delta_cache", None) is None:
-            self._delta_cache = self._build_delta_cache(dev_loader)
-
-        clean, degraded, labels = self._delta_cache
-        self.model.eval()
-
-        clean_metrics, _ = calculate_metrics(labels, self._score_waveforms(clean))
-        deg_metrics, _ = calculate_metrics(labels, self._score_waveforms(degraded))
-        return float(max(0.0, clean_metrics["macro_f1"] - deg_metrics["macro_f1"]))
+        types = np.asarray([str(item.get("type", "unknown")) for item in all_meta])
+        if len(types) == len(labels_np) and len(labels_np):
+            metrics["type_avg_macro_f1"] = type_average_f1(labels_np, scores_np, types, 0.5)
+        return metrics, labels_np, scores_np, all_meta
 
     def fit(self, train_loader, dev_loader, criterion, epochs, patience):
         epochs_without_improvement = 0
@@ -372,12 +277,7 @@ class Trainer:
             train_loss, train_acc = self.train_one_epoch(train_loader, criterion, epoch)
             dev_metrics, _, _, _ = self.evaluate_loader(dev_loader, criterion, "Dev")
 
-            mean_delta = 0.0
-            if self.use_j_score:
-                mean_delta = self.estimate_dev_delta_macro_f1(dev_loader)
-
-            j_score = dev_metrics["macro_f1"] - self.lambda_delta * mean_delta
-            selection_score = j_score if self.use_j_score else dev_metrics["macro_f1"]
+            selection_score = dev_metrics["macro_f1"]
 
             row = {
                 "epoch": epoch,
@@ -385,11 +285,11 @@ class Trainer:
                 "train_acc": train_acc,
                 "dev_loss": dev_metrics["loss"],
                 "dev_macro_f1": dev_metrics["macro_f1"],
+                "dev_type_avg_macro_f1": dev_metrics.get("type_avg_macro_f1"),
                 "dev_auroc": dev_metrics["auroc"],
                 "dev_eer": dev_metrics["eer"],
                 "dev_accuracy": dev_metrics["accuracy"],
-                "mean_delta_macro_f1": mean_delta,
-                "best_J": selection_score,
+                "selection_score": selection_score,
                 "lr": self.optimizer.param_groups[0]["lr"],
                 "mode": self.mode,
             }
@@ -399,12 +299,12 @@ class Trainer:
             save_training_history(self.experiment_dir, self.history)
 
             logger.info(
-                "Epoch %s/%s train_loss=%.4f dev_macro_f1=%.4f J=%.4f",
+                "Epoch %s/%s train_loss=%.4f dev_macro_f1=%.4f dev_eer=%.4f",
                 epoch,
                 epochs,
                 train_loss,
                 dev_metrics["macro_f1"],
-                selection_score,
+                dev_metrics["eer"],
             )
 
             self.scheduler.step(dev_metrics["macro_f1"])
@@ -421,9 +321,6 @@ class Trainer:
                 "best_score": selection_score,
             }
 
-            if self.channel_head is not None:
-                checkpoint["channel_head_state_dict"] = self.channel_head.state_dict()
-
             torch.save(checkpoint, last_path)
 
             if selection_score > self.best_score:
@@ -431,11 +328,16 @@ class Trainer:
                 self.best_epoch = epoch
                 epochs_without_improvement = 0
                 torch.save(checkpoint, best_path)
-                logger.info("  -> saved new best checkpoint (score=%.4f)", selection_score)
+                logger.info("  -> saved new best checkpoint (dev_macro_f1=%.4f)", selection_score)
             else:
                 epochs_without_improvement += 1
 
-            if epochs_without_improvement >= patience:
+            if should_early_stop(
+                epoch,
+                epochs_without_improvement,
+                patience,
+                self.min_epoch_for_early_stop,
+            ):
                 logger.info("Early stopping at epoch %s", epoch)
                 break
 

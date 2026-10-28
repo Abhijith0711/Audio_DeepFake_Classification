@@ -14,9 +14,9 @@
 ## Proposed method names
 
 - **FT-RCL** — Frequency-Time Robustness Coherence Learning (baseline proposed method).  
-- **STAR-Edge** — **Recommended for stronger novelty:** adds severity **trajectory** coherence, **channel–artifact disentanglement**, and **asymmetric bona-fide** robustness (see §11 in `01_NOVEL_METHOD_FT-RCL_SPEC.md`).
+- **STAR-Edge** — future work only. It is not in the training code. The design note is §11 of `01_NOVEL_METHOD_FT-RCL_SPEC.md`.
 
-Both use the E1 v4 MobileNetV3-Small backbone.
+The runnable methods are M0, M1, M2, and M3 on the E1 v4 MobileNetV3-Small backbone.
 
 ## Next step
 

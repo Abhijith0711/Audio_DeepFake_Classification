@@ -3,7 +3,6 @@ import torch
 import torch.nn as nn
 
 from src.training.losses.ft_rcl import ft_rcl_loss, ftsc_loss, prediction_coherence_loss
-from src.training.losses.star_edge import abr_loss, stc_loss
 
 
 def test_prediction_coherence_forward():
@@ -41,18 +40,6 @@ def test_ft_rcl_loss_forward():
     )
     assert total.ndim == 0
     assert "l_pc" in parts
-
-
-def test_star_edge_losses():
-    sig = torch.randn(4, 8)
-    sig = sig / sig.norm(dim=-1, keepdim=True)
-    probs = [torch.rand(4), torch.rand(4), torch.rand(4)]
-    stc = stc_loss([sig, sig, sig], probs)
-    assert stc.ndim == 0
-
-    labels = torch.tensor([0, 1, 0, 1])
-    abr = abr_loss(probs[0], probs[1], labels)
-    assert abr.ndim == 0
 
 
 try:

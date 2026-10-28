@@ -5,10 +5,10 @@ baseline_metrics_path: experiments/baselines/E1_v4/E1_ATADD_eval_metrics_v4.json
 logmel_stats_path: experiments/baselines/E1_v4/E1_ATADD_logmel_stats_v4.json
 
 dataset:
-  audio_root: AT_ADD_BTP
-  train_manifest: data/manifests/train_manifest.csv
-  dev_manifest: data/manifests/dev_manifest.csv
-  eval_manifest: data/manifests/eval_manifest.csv
+  audio_root: reworked_subset
+  train_manifest: reworked_subset/manifests/train_manifest.csv
+  dev_manifest: reworked_subset/manifests/dev_manifest.csv
+  eval_manifest: reworked_subset/manifests/eval_manifest.csv
 
 audio:
   sample_rate: 24000
@@ -24,18 +24,15 @@ spectrogram:
 training:
   seed: 42
   batch_size: 32
-  epochs: 20
+  epochs: 40
   learning_rate: 0.001
   weight_decay: 0.0001
   patience: 5
+  # Severity 4 starts at epoch 13. Stopping is allowed from epoch 14.
+  min_epoch_for_early_stop: 14
   num_workers: 4
   prefetch_factor: 2
   pin_memory: true
-
-selection:
-  use_j_score: true
-  lambda_delta: 0.5
-  delta_num_samples: 384
 
 ft_rcl:
   beta: 0.5
@@ -49,9 +46,3 @@ ft_rcl:
   curriculum:
     epoch_milestones: [1, 6, 13]
     severity_milestones: [1, 3, 4]
-
-star_edge:
-  enabled: false
-  use_stc: false
-  use_cad: false
-  use_abr: false

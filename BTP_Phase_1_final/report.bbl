@@ -1,0 +1,1464 @@
+% $ biblatex auxiliary file $
+% $ biblatex bbl format version 3.2 $
+% Do not modify the above lines!
+%
+% This is an auxiliary file used by the 'biblatex' package.
+% This file may safely be deleted. It will be recreated as
+% required.
+%
+\begingroup
+\makeatletter
+\@ifundefined{ver@biblatex.sty}
+  {\@latex@error
+     {Missing 'biblatex' package}
+     {The bibliography requires the 'biblatex' package.}
+      \aftergroup\endinput}
+  {}
+\endgroup
+
+\datalist[entry]{none/global//global/global}
+  \entry{kinnunen2017detection}{inproceedings}{}
+    \name{author}{8}{}{%
+      {{hash=KT}{%
+         family={Kinnunen},
+         familyi={K\bibinitperiod},
+         given={Tomi},
+         giveni={T\bibinitperiod},
+      }}%
+      {{hash=SM}{%
+         family={Sahidullah},
+         familyi={S\bibinitperiod},
+         given={Md},
+         giveni={M\bibinitperiod},
+      }}%
+      {{hash=KH}{%
+         family={Kukanov},
+         familyi={K\bibinitperiod},
+         given={Huseyin},
+         giveni={H\bibinitperiod},
+      }}%
+      {{hash=DH}{%
+         family={Delgado},
+         familyi={D\bibinitperiod},
+         given={H{\'e}ctor},
+         giveni={H\bibinitperiod},
+      }}%
+      {{hash=TM}{%
+         family={Todisco},
+         familyi={T\bibinitperiod},
+         given={Massimiliano},
+         giveni={M\bibinitperiod},
+      }}%
+      {{hash=EN}{%
+         family={Evans},
+         familyi={E\bibinitperiod},
+         given={Nicholas},
+         giveni={N\bibinitperiod},
+      }}%
+      {{hash=YJ}{%
+         family={Yamagishi},
+         familyi={Y\bibinitperiod},
+         given={Junichi},
+         giveni={J\bibinitperiod},
+      }}%
+      {{hash=NA}{%
+         family={Nautsch},
+         familyi={N\bibinitperiod},
+         given={Andreas},
+         giveni={A\bibinitperiod},
+      }}%
+    }
+    \field{labeltitlesource}{title}
+    \field{booktitle}{Proc.\ Interspeech}
+    \field{title}{The {ASVspoof} 2017 Challenge: Assessing the Limits of Replay
+  Spoofing Attack Detection}
+    \field{year}{2017}
+  \endentry
+
+  \entry{wang2020asvspoof}{article}{}
+    \true{moreauthor}
+    \name{author}{8}{}{%
+      {{hash=WX}{%
+         family={Wang},
+         familyi={W\bibinitperiod},
+         given={Xin},
+         giveni={X\bibinitperiod},
+      }}%
+      {{hash=TM}{%
+         family={Todisco},
+         familyi={T\bibinitperiod},
+         given={Massimiliano},
+         giveni={M\bibinitperiod},
+      }}%
+      {{hash=SM}{%
+         family={Sahidullah},
+         familyi={S\bibinitperiod},
+         given={Md},
+         giveni={M\bibinitperiod},
+      }}%
+      {{hash=PS}{%
+         family={Patino},
+         familyi={P\bibinitperiod},
+         given={Sara},
+         giveni={S\bibinitperiod},
+      }}%
+      {{hash=DH}{%
+         family={Delgado},
+         familyi={D\bibinitperiod},
+         given={H{\'e}ctor},
+         giveni={H\bibinitperiod},
+      }}%
+      {{hash=NA}{%
+         family={Nautsch},
+         familyi={N\bibinitperiod},
+         given={Andreas},
+         giveni={A\bibinitperiod},
+      }}%
+      {{hash=YJ}{%
+         family={Yamagishi},
+         familyi={Y\bibinitperiod},
+         given={Junichi},
+         giveni={J\bibinitperiod},
+      }}%
+      {{hash=EN}{%
+         family={Evans},
+         familyi={E\bibinitperiod},
+         given={Nicholas},
+         giveni={N\bibinitperiod},
+      }}%
+    }
+    \field{labeltitlesource}{title}
+    \verb{doi}
+    \verb 10.1016/j.csl.2020.101114
+    \endverb
+    \field{pages}{101114}
+    \field{title}{{ASVspoof} 2019: A large-scale public database of
+  synthesized, converted and replayed speech}
+    \field{volume}{64}
+    \field{journaltitle}{Computer Speech \& Language}
+    \field{year}{2020}
+  \endentry
+
+  \entry{xie2026atadd}{misc}{}
+    \name{author}{14}{}{%
+      {{hash=XY}{%
+         family={Xie},
+         familyi={X\bibinitperiod},
+         given={Yuankun},
+         giveni={Y\bibinitperiod},
+      }}%
+      {{hash=CH}{%
+         family={Cheng},
+         familyi={C\bibinitperiod},
+         given={Haonan},
+         giveni={H\bibinitperiod},
+      }}%
+      {{hash=ZJ}{%
+         family={Zhou},
+         familyi={Z\bibinitperiod},
+         given={Jiayi},
+         giveni={J\bibinitperiod},
+      }}%
+      {{hash=GX}{%
+         family={Guo},
+         familyi={G\bibinitperiod},
+         given={Xiaoxuan},
+         giveni={X\bibinitperiod},
+      }}%
+      {{hash=WT}{%
+         family={Wang},
+         familyi={W\bibinitperiod},
+         given={Tao},
+         giveni={T\bibinitperiod},
+      }}%
+      {{hash=ZC}{%
+         family={Zhang},
+         familyi={Z\bibinitperiod},
+         given={Changhao},
+         giveni={C\bibinitperiod},
+      }}%
+      {{hash=LJ}{%
+         family={Liu},
+         familyi={L\bibinitperiod},
+         given={Jian},
+         giveni={J\bibinitperiod},
+      }}%
+      {{hash=WW}{%
+         family={Wang},
+         familyi={W\bibinitperiod},
+         given={Weiqiang},
+         giveni={W\bibinitperiod},
+      }}%
+      {{hash=FR}{%
+         family={Fu},
+         familyi={F\bibinitperiod},
+         given={Ruibo},
+         giveni={R\bibinitperiod},
+      }}%
+      {{hash=WX}{%
+         family={Wang},
+         familyi={W\bibinitperiod},
+         given={Xiaopeng},
+         giveni={X\bibinitperiod},
+      }}%
+      {{hash=HH}{%
+         family={Huang},
+         familyi={H\bibinitperiod},
+         given={Hengyan},
+         giveni={H\bibinitperiod},
+      }}%
+      {{hash=HX}{%
+         family={Huang},
+         familyi={H\bibinitperiod},
+         given={Xiaoying},
+         giveni={X\bibinitperiod},
+      }}%
+      {{hash=YL}{%
+         family={Ye},
+         familyi={Y\bibinitperiod},
+         given={Long},
+         giveni={L\bibinitperiod},
+      }}%
+      {{hash=ZG}{%
+         family={Zhai},
+         familyi={Z\bibinitperiod},
+         given={Guangtao},
+         giveni={G\bibinitperiod},
+      }}%
+    }
+    \field{labeltitlesource}{title}
+    \verb{doi}
+    \verb 10.48550/arXiv.2608.23437
+    \endverb
+    \verb{eprint}
+    \verb 2608.23437
+    \endverb
+    \field{title}{{AT-ADD}: A Benchmark and Challenge for Robust and All-Type
+  Audio Deepfake Detection}
+    \field{eprinttype}{arXiv}
+    \field{eprintclass}{cs.SD}
+    \field{year}{2026}
+  \endentry
+
+  \entry{shaaban2023ieeeAccess}{article}{}
+    \name{author}{3}{}{%
+      {{hash=SOA}{%
+         family={Shaaban},
+         familyi={S\bibinitperiod},
+         given={Ousama\bibnamedelima A.},
+         giveni={O\bibinitperiod\bibinitdelim A\bibinitperiod},
+      }}%
+      {{hash=YR}{%
+         family={Yildirim},
+         familyi={Y\bibinitperiod},
+         given={Remzi},
+         giveni={R\bibinitperiod},
+      }}%
+      {{hash=AAA}{%
+         family={Alguttar},
+         familyi={A\bibinitperiod},
+         given={Abubaker\bibnamedelima A.},
+         giveni={A\bibinitperiod\bibinitdelim A\bibinitperiod},
+      }}%
+    }
+    \field{labeltitlesource}{title}
+    \verb{doi}
+    \verb 10.1109/ACCESS.2023.3333866
+    \endverb
+    \field{pages}{130047\bibrangedash 130064}
+    \field{title}{Audio Deepfake Approaches}
+    \field{volume}{11}
+    \field{journaltitle}{IEEE Access}
+    \field{year}{2023}
+  \endentry
+
+  \entry{zhang2025sensorsSurvey}{article}{}
+    \name{author}{4}{}{%
+      {{hash=ZB}{%
+         family={Zhang},
+         familyi={Z\bibinitperiod},
+         given={Bowen},
+         giveni={B\bibinitperiod},
+      }}%
+      {{hash=CH}{%
+         family={Cui},
+         familyi={C\bibinitperiod},
+         given={Hui},
+         giveni={H\bibinitperiod},
+      }}%
+      {{hash=NV}{%
+         family={Nguyen},
+         familyi={N\bibinitperiod},
+         given={Van},
+         giveni={V\bibinitperiod},
+      }}%
+      {{hash=WM}{%
+         family={Whitty},
+         familyi={W\bibinitperiod},
+         given={Monica},
+         giveni={M\bibinitperiod},
+      }}%
+    }
+    \field{labeltitlesource}{title}
+    \verb{doi}
+    \verb 10.3390/s25071989
+    \endverb
+    \field{number}{7}
+    \field{pages}{1989}
+    \field{title}{Audio Deepfake Detection: What Has Been Achieved and What
+  Lies Ahead}
+    \field{volume}{25}
+    \field{journaltitle}{Sensors}
+    \field{year}{2025}
+  \endentry
+
+  \entry{alnaqbi2026systematic}{article}{}
+    \name{author}{2}{}{%
+      {{hash=AM}{%
+         family={Alnaqbi},
+         familyi={A\bibinitperiod},
+         given={Mahra},
+         giveni={M\bibinitperiod},
+      }}%
+      {{hash=IRA}{%
+         family={Ikuesan},
+         familyi={I\bibinitperiod},
+         given={Richard\bibnamedelima Adeyemi},
+         giveni={R\bibinitperiod\bibinitdelim A\bibinitperiod},
+      }}%
+    }
+    \field{labeltitlesource}{title}
+    \verb{doi}
+    \verb 10.1007/s10791-026-10077-1
+    \endverb
+    \field{pages}{202}
+    \field{title}{A Systematic Review of Audio Deepfake Detection Techniques
+  for Digital Investigation}
+    \field{volume}{29}
+    \field{journaltitle}{Discover Computing}
+    \field{year}{2026}
+  \endentry
+
+  \entry{nguyenle2026deepfakeSurvey}{article}{}
+    \name{author}{4}{}{%
+      {{hash=NLHH}{%
+         family={Nguyen-Le},
+         familyi={N\bibinithyphendelim L\bibinitperiod},
+         given={Hong-Hanh},
+         giveni={H\bibinithyphendelim H\bibinitperiod},
+      }}%
+      {{hash=TVT}{%
+         family={Tran},
+         familyi={T\bibinitperiod},
+         given={Van-Tuan},
+         giveni={V\bibinithyphendelim T\bibinitperiod},
+      }}%
+      {{hash=NDT}{%
+         family={Nguyen},
+         familyi={N\bibinitperiod},
+         given={Dinh-Thuc},
+         giveni={D\bibinithyphendelim T\bibinitperiod},
+      }}%
+      {{hash=LKNA}{%
+         family={Le-Khac},
+         familyi={L\bibinithyphendelim K\bibinitperiod},
+         given={Nhien-An},
+         giveni={N\bibinithyphendelim A\bibinitperiod},
+      }}%
+    }
+    \field{labeltitlesource}{title}
+    \verb{doi}
+    \verb 10.1007/s10462-026-11608-4
+    \endverb
+    \field{pages}{203}
+    \field{title}{Deepfake Detection Across Image, Video, and Audio: A
+  Comprehensive Survey with Empirical Evaluation of Generalization and
+  Robustness}
+    \field{volume}{59}
+    \field{journaltitle}{Artificial Intelligence Review}
+    \field{year}{2026}
+  \endentry
+
+  \entry{raza2026foundationSurvey}{misc}{}
+    \true{moreauthor}
+    \name{author}{3}{}{%
+      {{hash=RS}{%
+         family={Raza},
+         familyi={R\bibinitperiod},
+         given={Shaina},
+         giveni={S\bibinitperiod},
+      }}%
+      {{hash=HJ}{%
+         family={Ho},
+         familyi={H\bibinitperiod},
+         given={Jessee},
+         giveni={J\bibinitperiod},
+      }}%
+      {{hash=RAY}{%
+         family={Radwan},
+         familyi={R\bibinitperiod},
+         given={Ahmed\bibnamedelima Y.},
+         giveni={A\bibinitperiod\bibinitdelim Y\bibinitperiod},
+      }}%
+    }
+    \field{labeltitlesource}{title}
+    \field{note}{Preprint, MDPI Preprints 202608.1870}
+    \field{title}{Deepfakes in the Foundation-Model Era: A Survey of Forensics,
+  Generation and Distribution Across Social Media Lifecycle}
+    \field{year}{2026}
+  \endentry
+
+  \entry{shaaban2025engineeringReports}{article}{}
+    \name{author}{2}{}{%
+      {{hash=SOA}{%
+         family={Shaaban},
+         familyi={S\bibinitperiod},
+         given={Ousama\bibnamedelima A.},
+         giveni={O\bibinitperiod\bibinitdelim A\bibinitperiod},
+      }}%
+      {{hash=YR}{%
+         family={Yildirim},
+         familyi={Y\bibinitperiod},
+         given={Remzi},
+         giveni={R\bibinitperiod},
+      }}%
+    }
+    \field{labeltitlesource}{title}
+    \field{note}{Wiley Engineering Reports, e70078 series}
+    \field{title}{Audio Deepfake Detection Using Deep Learning}
+    \field{journaltitle}{Engineering Reports}
+    \field{year}{2025}
+  \endentry
+
+  \entry{mcuba2023deeplearning}{article}{}
+    \name{author}{4}{}{%
+      {{hash=MM}{%
+         family={Mcuba},
+         familyi={M\bibinitperiod},
+         given={Mvelo},
+         giveni={M\bibinitperiod},
+      }}%
+      {{hash=SA}{%
+         family={Singh},
+         familyi={S\bibinitperiod},
+         given={Avinash},
+         giveni={A\bibinitperiod},
+      }}%
+      {{hash=IRA}{%
+         family={Ikuesan},
+         familyi={I\bibinitperiod},
+         given={Richard\bibnamedelima Adeyemi},
+         giveni={R\bibinitperiod\bibinitdelim A\bibinitperiod},
+      }}%
+      {{hash=VHS}{%
+         family={Venter},
+         familyi={V\bibinitperiod},
+         given={Hein\bibnamedelima S.},
+         giveni={H\bibinitperiod\bibinitdelim S\bibinitperiod},
+      }}%
+    }
+    \field{labeltitlesource}{title}
+    \verb{doi}
+    \verb 10.1016/j.procs.2023.01.283
+    \endverb
+    \field{pages}{211\bibrangedash 219}
+    \field{title}{The Effect of Deep Learning Methods on Deepfake Audio
+  Detection for Digital Investigation}
+    \field{volume}{219}
+    \field{journaltitle}{Procedia Computer Science}
+    \field{year}{2023}
+  \endentry
+
+  \entry{li2024sonar}{article}{}
+    \true{moreauthor}
+    \name{author}{2}{}{%
+      {{hash=LX}{%
+         family={Li},
+         familyi={L\bibinitperiod},
+         given={Xiang},
+         giveni={X\bibinitperiod},
+      }}%
+      {{hash=CPY}{%
+         family={Chen},
+         familyi={C\bibinitperiod},
+         given={Pin-Yu},
+         giveni={P\bibinithyphendelim Y\bibinitperiod},
+      }}%
+    }
+    \field{labeltitlesource}{title}
+    \verb{doi}
+    \verb 10.1145/3736765
+    \endverb
+    \field{title}{Where Are We in Audio Deepfake Detection? A Systematic
+  Analysis Over Generative and Detection Models}
+    \field{journaltitle}{ACM Transactions on Multimedia Computing,
+  Communications, and Applications}
+    \field{year}{2024}
+  \endentry
+
+  \entry{frank2021wavefake}{misc}{}
+    \name{author}{2}{}{%
+      {{hash=FJ}{%
+         family={Frank},
+         familyi={F\bibinitperiod},
+         given={Joel},
+         giveni={J\bibinitperiod},
+      }}%
+      {{hash=SL}{%
+         family={Sch{\"o}nherr},
+         familyi={S\bibinitperiod},
+         given={Lea},
+         giveni={L\bibinitperiod},
+      }}%
+    }
+    \field{labeltitlesource}{title}
+    \verb{eprint}
+    \verb 2111.02813
+    \endverb
+    \field{title}{{WaveFake}: A Data Set to Facilitate Audio Deepfake
+  Detection}
+    \field{eprinttype}{arXiv}
+    \field{eprintclass}{cs.SD}
+    \field{year}{2021}
+  \endentry
+
+  \entry{khalid2021fakeavceleb}{misc}{}
+    \name{author}{4}{}{%
+      {{hash=KH}{%
+         family={Khalid},
+         familyi={K\bibinitperiod},
+         given={Hasam},
+         giveni={H\bibinitperiod},
+      }}%
+      {{hash=TS}{%
+         family={Tariq},
+         familyi={T\bibinitperiod},
+         given={Shahroz},
+         giveni={S\bibinitperiod},
+      }}%
+      {{hash=KM}{%
+         family={Kim},
+         familyi={K\bibinitperiod},
+         given={Minha},
+         giveni={M\bibinitperiod},
+      }}%
+      {{hash=WSS}{%
+         family={Woo},
+         familyi={W\bibinitperiod},
+         given={Simon\bibnamedelima S.},
+         giveni={S\bibinitperiod\bibinitdelim S\bibinitperiod},
+      }}%
+    }
+    \field{labeltitlesource}{title}
+    \verb{eprint}
+    \verb 2108.05080
+    \endverb
+    \field{title}{{FakeAVCeleb}: A Novel Audio-Video Multimodal Deepfake
+  Dataset}
+    \field{eprinttype}{arXiv}
+    \field{eprintclass}{cs.CV}
+    \field{year}{2021}
+  \endentry
+
+  \entry{xie2024fakesound}{misc}{}
+    \name{author}{6}{}{%
+      {{hash=XZ}{%
+         family={Xie},
+         familyi={X\bibinitperiod},
+         given={Zeyu},
+         giveni={Z\bibinitperiod},
+      }}%
+      {{hash=LB}{%
+         family={Li},
+         familyi={L\bibinitperiod},
+         given={Baihan},
+         giveni={B\bibinitperiod},
+      }}%
+      {{hash=XX}{%
+         family={Xu},
+         familyi={X\bibinitperiod},
+         given={Xuenan},
+         giveni={X\bibinitperiod},
+      }}%
+      {{hash=LZ}{%
+         family={Liang},
+         familyi={L\bibinitperiod},
+         given={Zheng},
+         giveni={Z\bibinitperiod},
+      }}%
+      {{hash=YK}{%
+         family={Yu},
+         familyi={Y\bibinitperiod},
+         given={Kai},
+         giveni={K\bibinitperiod},
+      }}%
+      {{hash=WM}{%
+         family={Wu},
+         familyi={W\bibinitperiod},
+         given={Mengyue},
+         giveni={M\bibinitperiod},
+      }}%
+    }
+    \field{labeltitlesource}{title}
+    \verb{eprint}
+    \verb 2406.08052
+    \endverb
+    \field{title}{{FakeSound}: Deepfake General Audio Detection}
+    \field{eprinttype}{arXiv}
+    \field{eprintclass}{cs.SD}
+    \field{year}{2024}
+  \endentry
+
+  \entry{fan2026dualssl}{misc}{}
+    \name{author}{7}{}{%
+      {{hash=FC}{%
+         family={Fan},
+         familyi={F\bibinitperiod},
+         given={Cunhang},
+         giveni={C\bibinitperiod},
+      }}%
+      {{hash=CJ}{%
+         family={Cao},
+         familyi={C\bibinitperiod},
+         given={Junqin},
+         giveni={J\bibinitperiod},
+      }}%
+      {{hash=GT}{%
+         family={Gao},
+         familyi={G\bibinitperiod},
+         given={Tian},
+         giveni={T\bibinitperiod},
+      }}%
+      {{hash=XZ}{%
+         family={Xie},
+         familyi={X\bibinitperiod},
+         given={Zhipeng},
+         giveni={Z\bibinitperiod},
+      }}%
+      {{hash=XJ}{%
+         family={Xue},
+         familyi={X\bibinitperiod},
+         given={Jun},
+         giveni={J\bibinitperiod},
+      }}%
+      {{hash=LZ}{%
+         family={Lv},
+         familyi={L\bibinitperiod},
+         given={Zhao},
+         giveni={Z\bibinitperiod},
+      }}%
+      {{hash=FX}{%
+         family={Fang},
+         familyi={F\bibinitperiod},
+         given={Xin},
+         giveni={X\bibinitperiod},
+      }}%
+    }
+    \field{labeltitlesource}{title}
+    \verb{eprint}
+    \verb 2608.29021
+    \endverb
+    \field{title}{Beyond Speech: Dual-Domain {SSL} Fusion for Unified All-Type
+  Audio Deepfake Detection}
+    \field{eprinttype}{arXiv}
+    \field{eprintclass}{cs.SD}
+    \field{year}{2026}
+  \endentry
+
+  \entry{xie2026ftgrpo}{misc}{}
+    \name{author}{9}{}{%
+      {{hash=XY}{%
+         family={Xie},
+         familyi={X\bibinitperiod},
+         given={Yuankun},
+         giveni={Y\bibinitperiod},
+      }}%
+      {{hash=GX}{%
+         family={Guo},
+         familyi={G\bibinitperiod},
+         given={Xiaoxuan},
+         giveni={X\bibinitperiod},
+      }}%
+      {{hash=ZJ}{%
+         family={Zhou},
+         familyi={Z\bibinitperiod},
+         given={Jiayi},
+         giveni={J\bibinitperiod},
+      }}%
+      {{hash=WT}{%
+         family={Wang},
+         familyi={W\bibinitperiod},
+         given={Tao},
+         giveni={T\bibinitperiod},
+      }}%
+      {{hash=LJ}{%
+         family={Liu},
+         familyi={L\bibinitperiod},
+         given={Jian},
+         giveni={J\bibinitperiod},
+      }}%
+      {{hash=FR}{%
+         family={Fu},
+         familyi={F\bibinitperiod},
+         given={Ruibo},
+         giveni={R\bibinitperiod},
+      }}%
+      {{hash=WX}{%
+         family={Wang},
+         familyi={W\bibinitperiod},
+         given={Xiaopeng},
+         giveni={X\bibinitperiod},
+      }}%
+      {{hash=CH}{%
+         family={Cheng},
+         familyi={C\bibinitperiod},
+         given={Haonan},
+         giveni={H\bibinitperiod},
+      }}%
+      {{hash=YL}{%
+         family={Ye},
+         familyi={Y\bibinitperiod},
+         given={Long},
+         giveni={L\bibinitperiod},
+      }}%
+    }
+    \field{labeltitlesource}{title}
+    \verb{eprint}
+    \verb 2601.02983
+    \endverb
+    \field{title}{Interpretable All-Type Audio Deepfake Detection with Audio
+  {LLM}s via Frequency--Time Reinforcement Learning}
+    \field{eprinttype}{arXiv}
+    \field{eprintclass}{cs.SD}
+    \field{year}{2026}
+  \endentry
+
+  \entry{gu2024allm4add}{inproceedings}{}
+    \true{moreauthor}
+    \name{author}{1}{}{%
+      {{hash=GH}{%
+         family={Gu},
+         familyi={G\bibinitperiod},
+         given={Hao},
+         giveni={H\bibinitperiod},
+      }}%
+    }
+    \field{labeltitlesource}{title}
+    \field{booktitle}{Proc.\ ACM Multimedia}
+    \verb{doi}
+    \verb 10.1145/3746027.3755851
+    \endverb
+    \field{title}{{ALLM4ADD}: Unlocking the Capabilities of Audio Large
+  Language Models for Audio Deepfake Detection}
+    \field{year}{2024}
+  \endentry
+
+  \entry{howard2019mobilenetv3}{article}{}
+    \name{author}{12}{}{%
+      {{hash=HA}{%
+         family={Howard},
+         familyi={H\bibinitperiod},
+         given={Andrew},
+         giveni={A\bibinitperiod},
+      }}%
+      {{hash=SM}{%
+         family={Sandler},
+         familyi={S\bibinitperiod},
+         given={Mark},
+         giveni={M\bibinitperiod},
+      }}%
+      {{hash=CG}{%
+         family={Chu},
+         familyi={C\bibinitperiod},
+         given={Grace},
+         giveni={G\bibinitperiod},
+      }}%
+      {{hash=CLC}{%
+         family={Chen},
+         familyi={C\bibinitperiod},
+         given={Liang-Chieh},
+         giveni={L\bibinithyphendelim C\bibinitperiod},
+      }}%
+      {{hash=CB}{%
+         family={Chen},
+         familyi={C\bibinitperiod},
+         given={Bo},
+         giveni={B\bibinitperiod},
+      }}%
+      {{hash=TM}{%
+         family={Tan},
+         familyi={T\bibinitperiod},
+         given={Mingxing},
+         giveni={M\bibinitperiod},
+      }}%
+      {{hash=WW}{%
+         family={Wang},
+         familyi={W\bibinitperiod},
+         given={Weijun},
+         giveni={W\bibinitperiod},
+      }}%
+      {{hash=ZY}{%
+         family={Zhu},
+         familyi={Z\bibinitperiod},
+         given={Yukun},
+         giveni={Y\bibinitperiod},
+      }}%
+      {{hash=PR}{%
+         family={Pang},
+         familyi={P\bibinitperiod},
+         given={Ruoming},
+         giveni={R\bibinitperiod},
+      }}%
+      {{hash=VV}{%
+         family={Vasudevan},
+         familyi={V\bibinitperiod},
+         given={Vijay},
+         giveni={V\bibinitperiod},
+      }}%
+      {{hash=LQV}{%
+         family={Le},
+         familyi={L\bibinitperiod},
+         given={Quoc\bibnamedelima V.},
+         giveni={Q\bibinitperiod\bibinitdelim V\bibinitperiod},
+      }}%
+      {{hash=AH}{%
+         family={Adam},
+         familyi={A\bibinitperiod},
+         given={Hartwig},
+         giveni={H\bibinitperiod},
+      }}%
+    }
+    \field{labeltitlesource}{title}
+    \verb{doi}
+    \verb 10.48550/arXiv.1905.02244
+    \endverb
+    \field{title}{Searching for {MobileNetV3}}
+    \field{journaltitle}{arXiv preprint arXiv:1905.02244}
+    \field{year}{2019}
+  \endentry
+
+  \entry{pham2024deepfake}{article}{}
+    \name{author}{5}{}{%
+      {{hash=PL}{%
+         family={Pham},
+         familyi={P\bibinitperiod},
+         given={Lam},
+         giveni={L\bibinitperiod},
+      }}%
+      {{hash=LP}{%
+         family={Lam},
+         familyi={L\bibinitperiod},
+         given={Phat},
+         giveni={P\bibinitperiod},
+      }}%
+      {{hash=NT}{%
+         family={Nguyen},
+         familyi={N\bibinitperiod},
+         given={Truong},
+         giveni={T\bibinitperiod},
+      }}%
+      {{hash=NH}{%
+         family={Nguyen},
+         familyi={N\bibinitperiod},
+         given={Huyen},
+         giveni={H\bibinitperiod},
+      }}%
+      {{hash=SA}{%
+         family={Schindler},
+         familyi={S\bibinitperiod},
+         given={Alexander},
+         giveni={A\bibinitperiod},
+      }}%
+    }
+    \field{labeltitlesource}{title}
+    \field{title}{Deepfake Audio Detection Using Spectrogram-based Feature and
+  Ensemble of Deep Learning Models}
+    \field{journaltitle}{arXiv preprint arXiv:2407.01777}
+    \field{year}{2024}
+  \endentry
+
+  \entry{martindonas2022vicomtech}{inproceedings}{}
+    \name{author}{2}{}{%
+      {{hash=MDJM}{%
+         family={Mart{\'i}n-Do{\~n}as},
+         familyi={M\bibinithyphendelim D\bibinitperiod},
+         given={Juan\bibnamedelima M.},
+         giveni={J\bibinitperiod\bibinitdelim M\bibinitperiod},
+      }}%
+      {{hash=AA}{%
+         family={{\'A}lvarez},
+         familyi={{\'A}\bibinitperiod},
+         given={Aitor},
+         giveni={A\bibinitperiod},
+      }}%
+    }
+    \field{labeltitlesource}{title}
+    \field{booktitle}{Proc.\ {ADD} Challenge Workshop}
+    \field{note}{Low-quality and compressed audio robustness}
+    \field{title}{The {Vicomtech} Audio Deepfake Detection System Based on
+  {Wav2vec2} for the 2022 {ADD} Challenge}
+    \field{year}{2022}
+  \endentry
+
+  \entry{zhang2023sls}{inproceedings}{}
+    \name{author}{2}{}{%
+      {{hash=ZQ}{%
+         family={Zhang},
+         familyi={Z\bibinitperiod},
+         given={Qishan},
+         giveni={Q\bibinitperiod},
+      }}%
+      {{hash=WS}{%
+         family={Wen},
+         familyi={W\bibinitperiod},
+         given={Shuangbing},
+         giveni={S\bibinitperiod},
+      }}%
+    }
+    \field{labeltitlesource}{title}
+    \field{booktitle}{Proc.\ IEEE International Conference on Multimedia and
+  Expo (ICME)}
+    \verb{doi}
+    \verb 10.1109/3664647.3681345
+    \endverb
+    \field{title}{Audio Deepfake Detection with Self-Supervised {XLS-R} and
+  {SLS} Classifier}
+    \field{year}{2023}
+  \endentry
+
+  \entry{gao2024p2v}{inproceedings}{}
+    \true{moreauthor}
+    \name{author}{2}{}{%
+      {{hash=GC}{%
+         family={Gao},
+         familyi={G\bibinitperiod},
+         given={Chongyang},
+         giveni={C\bibinitperiod},
+      }}%
+      {{hash=PM}{%
+         family={Postiglione},
+         familyi={P\bibinitperiod},
+         given={Marco},
+         giveni={M\bibinitperiod},
+      }}%
+    }
+    \field{labeltitlesource}{title}
+    \field{booktitle}{Proc.\ ACM Web Conference}
+    \verb{doi}
+    \verb 10.1145/3770855.3817542
+    \endverb
+    \field{title}{Perturbed Public Voices ({P2V}): A Dataset for Robust Audio
+  Deepfake Detection}
+    \field{year}{2024}
+  \endentry
+
+  \entry{li2024crossdomain}{inproceedings}{}
+    \name{author}{7}{}{%
+      {{hash=LY}{%
+         family={Li},
+         familyi={L\bibinitperiod},
+         given={Yuang},
+         giveni={Y\bibinitperiod},
+      }}%
+      {{hash=ZM}{%
+         family={Zhang},
+         familyi={Z\bibinitperiod},
+         given={Min},
+         giveni={M\bibinitperiod},
+      }}%
+      {{hash=RM}{%
+         family={Ren},
+         familyi={R\bibinitperiod},
+         given={Mengxin},
+         giveni={M\bibinitperiod},
+      }}%
+      {{hash=QX}{%
+         family={Qiao},
+         familyi={Q\bibinitperiod},
+         given={Xiaosong},
+         giveni={X\bibinitperiod},
+      }}%
+      {{hash=MM}{%
+         family={Ma},
+         familyi={M\bibinitperiod},
+         given={Miaomiao},
+         giveni={M\bibinitperiod},
+      }}%
+      {{hash=WD}{%
+         family={Wei},
+         familyi={W\bibinitperiod},
+         given={Daimeng},
+         giveni={D\bibinitperiod},
+      }}%
+      {{hash=YH}{%
+         family={Yang},
+         familyi={Y\bibinitperiod},
+         given={Hao},
+         giveni={H\bibinitperiod},
+      }}%
+    }
+    \field{labeltitlesource}{title}
+    \field{booktitle}{Proc.\ EMNLP}
+    \field{pages}{4977\bibrangedash 4983}
+    \field{title}{Cross-Domain Audio Deepfake Detection: Dataset and Analysis}
+    \field{year}{2024}
+  \endentry
+
+  \entry{salvi2023compressionRobust}{article}{}
+    \name{author}{7}{}{%
+      {{hash=SD}{%
+         family={Salvi},
+         familyi={S\bibinitperiod},
+         given={Davide},
+         giveni={D\bibinitperiod},
+      }}%
+      {{hash=LH}{%
+         family={Liu},
+         familyi={L\bibinitperiod},
+         given={Honggu},
+         giveni={H\bibinitperiod},
+      }}%
+      {{hash=MS}{%
+         family={Mandelli},
+         familyi={M\bibinitperiod},
+         given={Sara},
+         giveni={S\bibinitperiod},
+      }}%
+      {{hash=BP}{%
+         family={Bestagini},
+         familyi={B\bibinitperiod},
+         given={Paolo},
+         giveni={P\bibinitperiod},
+      }}%
+      {{hash=ZW}{%
+         family={Zhou},
+         familyi={Z\bibinitperiod},
+         given={Wenbo},
+         giveni={W\bibinitperiod},
+      }}%
+      {{hash=ZW}{%
+         family={Zhang},
+         familyi={Z\bibinitperiod},
+         given={Weiming},
+         giveni={W\bibinitperiod},
+      }}%
+      {{hash=TS}{%
+         family={Tubaro},
+         familyi={T\bibinitperiod},
+         given={Stefano},
+         giveni={S\bibinitperiod},
+      }}%
+    }
+    \field{labeltitlesource}{title}
+    \verb{doi}
+    \verb 10.3390/jimaging9050122
+    \endverb
+    \field{note}{Includes compression-robust multimodal discussion}
+    \field{number}{5}
+    \field{pages}{122}
+    \field{title}{A Robust Approach to Multimodal Deepfake Detection}
+    \field{volume}{9}
+    \field{journaltitle}{Journal of Imaging}
+    \field{year}{2023}
+  \endentry
+
+  \entry{rabhi2024adversarial}{article}{}
+    \true{moreauthor}
+    \name{author}{1}{}{%
+      {{hash=RM}{%
+         family={Rabhi},
+         familyi={R\bibinitperiod},
+         given={Mouna},
+         giveni={M\bibinitperiod},
+      }}%
+    }
+    \field{labeltitlesource}{title}
+    \verb{doi}
+    \verb 10.1016/j.eswa.2024.123941
+    \endverb
+    \field{pages}{123941}
+    \field{title}{Audio-Deepfake Detection: Adversarial Attacks and
+  Countermeasures}
+    \field{volume}{250}
+    \field{journaltitle}{Expert Systems with Applications}
+    \field{year}{2024}
+  \endentry
+
+  \entry{khan2026trace}{inproceedings}{}
+    \name{author}{4}{}{%
+      {{hash=KA}{%
+         family={Khan},
+         familyi={K\bibinitperiod},
+         given={Awais},
+         giveni={A\bibinitperiod},
+      }}%
+      {{hash=FMU}{%
+         family={Farooq},
+         familyi={F\bibinitperiod},
+         given={Muhammad\bibnamedelima Umar},
+         giveni={M\bibinitperiod\bibinitdelim U\bibinitperiod},
+      }}%
+      {{hash=UK}{%
+         family={Uddin},
+         familyi={U\bibinitperiod},
+         given={Kutub},
+         giveni={K\bibinitperiod},
+      }}%
+      {{hash=MK}{%
+         family={Malik},
+         familyi={M\bibinitperiod},
+         given={Khalid},
+         giveni={K\bibinitperiod},
+      }}%
+    }
+    \field{labeltitlesource}{title}
+    \field{booktitle}{Proc.\ CVPR Workshops}
+    \field{title}{{TRACE}: Training-Free Partial Audio Deepfake Detection via
+  Embedding Trajectory Analysis of Speech Foundation Models}
+    \field{year}{2026}
+  \endentry
+
+  \entry{kumari2024voiceradar}{article}{}
+    \name{author}{6}{}{%
+      {{hash=KK}{%
+         family={Kumari},
+         familyi={K\bibinitperiod},
+         given={Kavita},
+         giveni={K\bibinitperiod},
+      }}%
+      {{hash=AM}{%
+         family={Abbasihafshejani},
+         familyi={A\bibinitperiod},
+         given={Maryam},
+         giveni={M\bibinitperiod},
+      }}%
+      {{hash=PA}{%
+         family={Pegoraro},
+         familyi={P\bibinitperiod},
+         given={Alessandro},
+         giveni={A\bibinitperiod},
+      }}%
+      {{hash=RP}{%
+         family={Rieger},
+         familyi={R\bibinitperiod},
+         given={Phillip},
+         giveni={P\bibinitperiod},
+      }}%
+      {{hash=AK}{%
+         family={Arshi},
+         familyi={A\bibinitperiod},
+         given={Kamyar},
+         giveni={K\bibinitperiod},
+      }}%
+      {{hash=JM}{%
+         family={Jadliwala},
+         familyi={J\bibinitperiod},
+         given={Murtuza},
+         giveni={M\bibinitperiod},
+      }}%
+    }
+    \field{labeltitlesource}{title}
+    \field{note}{IEEE document 10590871}
+    \field{title}{{VoiceRadar}: Voice Deepfake Detection Using Micro-Frequency
+  and Compositional Analysis}
+    \field{journaltitle}{IEEE Transactions on Information Forensics and
+  Security}
+    \field{year}{2024}
+  \endentry
+
+  \entry{li2023safear}{inproceedings}{}
+    \true{moreauthor}
+    \name{author}{2}{}{%
+      {{hash=LX}{%
+         family={Li},
+         familyi={L\bibinitperiod},
+         given={Xinfeng},
+         giveni={X\bibinitperiod},
+      }}%
+      {{hash=LK}{%
+         family={Li},
+         familyi={L\bibinitperiod},
+         given={Kai},
+         giveni={K\bibinitperiod},
+      }}%
+    }
+    \field{labeltitlesource}{title}
+    \field{booktitle}{Proc.\ ACM Multimedia}
+    \verb{doi}
+    \verb 10.1145/3658644.3670285
+    \endverb
+    \field{title}{{SafeEar}: Content Privacy-Preserving Audio Deepfake
+  Detection}
+    \field{year}{2023}
+  \endentry
+
+  \entry{yang2023avoiddf}{article}{}
+    \true{moreauthor}
+    \name{author}{4}{}{%
+      {{hash=YW}{%
+         family={Yang},
+         familyi={Y\bibinitperiod},
+         given={Wenyuan},
+         giveni={W\bibinitperiod},
+      }}%
+      {{hash=ZX}{%
+         family={Zhou},
+         familyi={Z\bibinitperiod},
+         given={Xiaoyu},
+         giveni={X\bibinitperiod},
+      }}%
+      {{hash=CZ}{%
+         family={Chen},
+         familyi={C\bibinitperiod},
+         given={Zhikai},
+         giveni={Z\bibinitperiod},
+      }}%
+      {{hash=GB}{%
+         family={Guo},
+         familyi={G\bibinitperiod},
+         given={Bofei},
+         giveni={B\bibinitperiod},
+      }}%
+    }
+    \field{labeltitlesource}{title}
+    \field{pages}{2015\bibrangedash 2029}
+    \field{title}{{AVoiD-DF}: Audio-Visual Joint Learning for Detecting
+  Deepfake}
+    \field{volume}{18}
+    \field{journaltitle}{IEEE Transactions on Information Forensics and
+  Security}
+    \field{year}{2023}
+  \endentry
+
+  \entry{oorloff2024avff}{inproceedings}{}
+    \true{moreauthor}
+    \name{author}{3}{}{%
+      {{hash=OT}{%
+         family={Oorloff},
+         familyi={O\bibinitperiod},
+         given={Trevine},
+         giveni={T\bibinitperiod},
+      }}%
+      {{hash=KS}{%
+         family={Koppisetti},
+         familyi={K\bibinitperiod},
+         given={Surya},
+         giveni={S\bibinitperiod},
+      }}%
+      {{hash=BN}{%
+         family={Bonettini},
+         familyi={B\bibinitperiod},
+         given={Nicol{\`o}},
+         giveni={N\bibinitperiod},
+      }}%
+    }
+    \field{labeltitlesource}{title}
+    \field{booktitle}{Proc.\ CVPR Workshops}
+    \field{title}{{AVFF}: Audio-Visual Feature Fusion for Video Deepfake
+  Detection}
+    \field{year}{2024}
+  \endentry
+
+  \entry{kim2026xavdt}{inproceedings}{}
+    \name{author}{6}{}{%
+      {{hash=KY}{%
+         family={Kim},
+         familyi={K\bibinitperiod},
+         given={Youngseo},
+         giveni={Y\bibinitperiod},
+      }}%
+      {{hash=YK}{%
+         family={Yun},
+         familyi={Y\bibinitperiod},
+         given={Kwan},
+         giveni={K\bibinitperiod},
+      }}%
+      {{hash=HS}{%
+         family={Hong},
+         familyi={H\bibinitperiod},
+         given={Seokhyeon},
+         giveni={S\bibinitperiod},
+      }}%
+      {{hash=CS}{%
+         family={Cha},
+         familyi={C\bibinitperiod},
+         given={Sihun},
+         giveni={S\bibinitperiod},
+      }}%
+      {{hash=KCS}{%
+         family={Koo},
+         familyi={K\bibinitperiod},
+         given={Colette\bibnamedelima Suhjung},
+         giveni={C\bibinitperiod\bibinitdelim S\bibinitperiod},
+      }}%
+      {{hash=NJ}{%
+         family={Noh},
+         familyi={N\bibinitperiod},
+         given={Junyong},
+         giveni={J\bibinitperiod},
+      }}%
+    }
+    \field{labeltitlesource}{title}
+    \field{booktitle}{Proc.\ CVPR}
+    \field{title}{{X-AVDT}: Audio-Visual Cross-Attention for Robust Deepfake
+  Detection}
+    \field{year}{2026}
+  \endentry
+
+  \entry{zhou2019joint}{inproceedings}{}
+    \name{author}{2}{}{%
+      {{hash=ZY}{%
+         family={Zhou},
+         familyi={Z\bibinitperiod},
+         given={Yipin},
+         giveni={Y\bibinitperiod},
+      }}%
+      {{hash=LSN}{%
+         family={Lim},
+         familyi={L\bibinitperiod},
+         given={Ser-Nam},
+         giveni={S\bibinithyphendelim N\bibinitperiod},
+      }}%
+    }
+    \field{labeltitlesource}{title}
+    \field{booktitle}{Proc.\ IEEE International Conference on Computer Vision
+  Workshops}
+    \field{title}{Joint Audio-Visual Deepfake Detection}
+    \field{year}{2019}
+  \endentry
+
+  \entry{srikanth2023hybridEmotion}{inproceedings}{}
+    \true{moreauthor}
+    \name{author}{1}{}{%
+      {{hash=SM}{%
+         family={Srikanth},
+         familyi={S\bibinitperiod},
+         given={M.},
+         giveni={M\bibinitperiod},
+      }}%
+    }
+    \field{labeltitlesource}{title}
+    \field{booktitle}{Proc.\ International Conference on Computing and
+  Communication}
+    \field{note}{Emotion-aware multimodal detection}
+    \field{title}{A Hybrid Intelligence Framework for Emotion-Aware Deepfake
+  Detection and Misinformation Risk Reduction}
+    \field{year}{2023}
+  \endentry
+
+  \entry{ugwumba2023multimodalFramework}{article}{}
+    \name{author}{1}{}{%
+      {{hash=UNK}{%
+         family={Ugwumba},
+         familyi={U\bibinitperiod},
+         given={Nnaemeka\bibnamedelima Kingsley},
+         giveni={N\bibinitperiod\bibinitdelim K\bibinitperiod},
+      }}%
+    }
+    \field{labeltitlesource}{title}
+    \field{note}{Multimodal social-media framing}
+    \field{title}{A Multi Modal Deepfake Detection Framework for Social Media
+  Platforms to Counter Internet Scams and Misinformation}
+    \field{journaltitle}{International Journal of Research Publication and
+  Reviews}
+    \field{year}{2023}
+  \endentry
+
+  \entry{hamed2023socialMediaReview}{article}{}
+    \name{author}{2}{}{%
+      {{hash=HH}{%
+         family={Hamed},
+         familyi={H\bibinitperiod},
+         given={Haiam},
+         giveni={H\bibinitperiod},
+      }}%
+      {{hash=HHA}{%
+         family={Hefny},
+         familyi={H\bibinitperiod},
+         given={Hesham\bibnamedelima A.},
+         giveni={H\bibinitperiod\bibinitdelim A\bibinitperiod},
+      }}%
+    }
+    \field{labeltitlesource}{title}
+    \verb{doi}
+    \verb 10.1016/j.array.2024.100326
+    \endverb
+    \field{pages}{100326}
+    \field{title}{Deep-Fake Detection of Digital Misinformation Over Social
+  Media: A Comprehensive Review}
+    \field{volume}{21}
+    \field{journaltitle}{Array}
+    \field{year}{2024}
+  \endentry
+
+  \entry{gomez2019light}{inproceedings}{}
+    \name{author}{4}{}{%
+      {{hash=GAA}{%
+         family={Gomez-Alanis},
+         familyi={G\bibinithyphendelim A\bibinitperiod},
+         given={Alejandro},
+         giveni={A\bibinitperiod},
+      }}%
+      {{hash=PAM}{%
+         family={Peinado},
+         familyi={P\bibinitperiod},
+         given={Antonio\bibnamedelima M.},
+         giveni={A\bibinitperiod\bibinitdelim M\bibinitperiod},
+      }}%
+      {{hash=GJA}{%
+         family={Gonzalez},
+         familyi={G\bibinitperiod},
+         given={Jose\bibnamedelima A.},
+         giveni={J\bibinitperiod\bibinitdelim A\bibinitperiod},
+      }}%
+      {{hash=AM}{%
+         family={Angel},
+         familyi={A\bibinitperiod},
+         given={M.},
+         giveni={M\bibinitperiod},
+      }}%
+    }
+    \field{labeltitlesource}{title}
+    \field{booktitle}{Proc.\ Interspeech}
+    \field{pages}{1068\bibrangedash 1072}
+    \field{title}{A Light Convolutional {GRU-RNN} Deep Feature Extractor for
+  {ASV} Spoofing Detection}
+    \field{year}{2019}
+  \endentry
+
+  \entry{chintha2020crnn}{article}{}
+    \true{moreauthor}
+    \name{author}{3}{}{%
+      {{hash=CA}{%
+         family={Chintha},
+         familyi={C\bibinitperiod},
+         given={Akash},
+         giveni={A\bibinitperiod},
+      }}%
+      {{hash=BBT}{%
+         family={Bao},
+         familyi={B\bibinitperiod},
+         given={Bao\bibnamedelima Thai},
+         giveni={B\bibinitperiod\bibinitdelim T\bibinitperiod},
+      }}%
+      {{hash=MD}{%
+         family={McDearmon},
+         familyi={M\bibinitperiod},
+         given={Dylan},
+         giveni={D\bibinitperiod},
+      }}%
+    }
+    \list{publisher}{1}{%
+      {IEEE}%
+    }
+    \field{labeltitlesource}{title}
+    \field{number}{5}
+    \field{pages}{1024\bibrangedash 1037}
+    \field{title}{Recurrent Convolutional Structures for Audio Spoof and Video
+  Deepfake Detection}
+    \field{volume}{14}
+    \field{journaltitle}{IEEE Journal of Selected Topics in Signal Processing}
+    \field{year}{2020}
+  \endentry
+\enddatalist
+\endinput

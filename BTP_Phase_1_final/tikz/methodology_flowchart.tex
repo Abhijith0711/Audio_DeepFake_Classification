@@ -1,0 +1,63 @@
+% Master proposed-methodology flowchart (replaces pipeline_overview.png)
+\begin{figure}[htbp]
+\centering
+\resizebox{\textwidth}{!}{%
+\begin{tikzpicture}
+% (a) data preparation and paired views
+\node[blk,text width=7.6cm] (in) at (0,0) {\textbf{AT-ADD Track~2 clip}\\mono, 24\,kHz, label $y\in\{0,1\}$, audio type $t$};
+\node[blk,text width=9.2cm] (seg) at (0,-1.6) {\textbf{Segmentation}\\4\,s crop (random in training, centre in evaluation) or repeat-padding, $N=96{,}000$};
+\node[blk,text width=4.6cm] (xc) at (-3.8,-3.3) {\textbf{Clean view} $x$};
+\node[trn,text width=6.4cm] (g) at (3.7,-3.3) {\textbf{Degradation simulator} $\tilde{x}=g(x;c)$\\MP3 $\cdot$ noise $\cdot$ resampling $\cdot$ telephony;\\severity $\rho\le\rho_{\max}(e)$ (curriculum)};
+% (b) frontend and backbone
+\node[blk,text width=5.6cm] (mc) at (-3.8,-6.3) {\textbf{Log-mel frontend} $\phi$\\STFT $\to$ 80 mel bins $\to$ log $\to$ z-score\\output $\hat{\mathbf L}_c$};
+\node[trn,text width=5.6cm] (md) at (3.8,-6.3) {\textbf{Log-mel frontend} $\phi$ (identical)\\STFT $\to$ 80 mel bins $\to$ log $\to$ z-score\\output $\hat{\mathbf L}_d$};
+\node[blk,text width=10.4cm] (bb) at (0,-8.6) {\textbf{Shared MobileNetV3-Small backbone} ($\approx$1.52\,M parameters)\\inverted residual blocks $\to$ feature map $F$ $\to$ global pool $\to$ 2-class head};
+\node[blk,text width=5.2cm,minimum height=1.5cm] (oc) at (-3.8,-10.7) {\textbf{Clean outputs}\\logits $z_c$, score $q_c$,\\8-band signature $s_c$};
+\node[trn,text width=5.2cm,minimum height=1.5cm] (od) at (3.8,-10.7) {\textbf{Degraded outputs}\\logits $z_d$, score $q_d$,\\8-band signature $s_d$};
+% (c) objectives
+\node[los,text width=3.2cm,minimum height=1.9cm] (lcls) at (-5.8,-14.0) {$\mathcal{L}_{\mathrm{cls}}$\\dual weighted CE\\$\mathcal{L}_{\mathrm{CE}}(z_c,y)+\beta\mathcal{L}_{\mathrm{CE}}(z_d,y)$};
+\node[los,text width=3.2cm,minimum height=1.9cm] (lpc) at (-1.95,-14.0) {$\mathcal{L}_{\mathrm{PC}}$\\prediction coherence\\$(q_c-q_d)^2$};
+\node[los,text width=3.2cm,minimum height=1.9cm] (lft) at (1.95,-14.0) {$\mathcal{L}_{\mathrm{FTSC}}$\\signature coherence\\$1-\cos(s_c,s_d)$ per band};
+\node[los,text width=3.2cm,minimum height=1.9cm] (gate) at (5.8,-14.0) {\textbf{Robustness gate}\\$w_i=\alpha_{t_i}\kappa_i\eta(\rho_i)$\\type, confidence, severity};
+\node[los,text width=12.6cm] (tot) at (0,-16.5) {\textbf{Total objective (mode M3)}\\$\mathcal{L}_{\mathrm{M3}}=\mathcal{L}_{\mathrm{cls}}+\bar{w}\,(\gamma_{\mathrm{pc}}\mathcal{L}_{\mathrm{PC}}+\gamma_{\mathrm{ftsc}}\mathcal{L}_{\mathrm{FTSC}})$};
+% (d) optimisation and (e) inference side by side
+\node[blk,text width=6.8cm] (opt) at (-3.9,-19.6) {\textbf{Optimization}\\AdamW, lr $10^{-3}$, weight decay $10^{-4}$, batch 32, $\le$20 epochs; gradients update the shared backbone};
+\node[blk,text width=6.8cm] (sel) at (-3.9,-21.6) {\textbf{Robustness-aware checkpoint selection}\\$J=\mathrm{Macro\text{-}F1}_{\mathrm{dev}}-\lambda\,\widehat{\Delta\mathrm{F1}}_{\mathrm{dev}}$, $\lambda=0.5$};
+\node[dep,text width=6.8cm] (inf) at (3.9,-19.6) {\textbf{Deployed detector} (inference graph unchanged)\\one log-mel pass $\to$ one forward pass\\$q=p_1$, $\hat y=\mathbb 1[q\ge0.5]$};
+\node[dep,text width=6.8cm] (ev) at (3.9,-21.6) {\textbf{Evaluation} on held-out clips\\Macro-F1, accuracy, AUROC, EER,\\AT-ADD Macro-F1};
+% arrows
+\draw[arr] (in)--(seg);
+\draw[arr] ([xshift=-1.6cm]seg.south)--(xc.north);
+\draw[arr] ([xshift=1.6cm]seg.south)--(g.north);
+\draw[arr] (xc)--(mc);
+\draw[arr] (g)--(md);
+\draw[arr] (mc.south)--(mc.south |- bb.north);
+\draw[arr] (md.south)--(md.south |- bb.north);
+\draw[arr] (oc.north)--(oc.north |- bb.south);
+\draw[arr] (od.north)--(od.north |- bb.south);
+\draw[thick] (oc.south)--(oc.south |- 0,-12.1);
+\draw[thick] (od.south)--(od.south |- 0,-12.1);
+\draw[thick] (-5.8,-12.1)--(5.8,-12.1);
+\foreach \n in {lcls,lpc,lft,gate}{\draw[arr] (\n.north |- 0,-12.1)--(\n.north);}
+\foreach \n in {lcls,lpc,lft,gate}{\draw[arr] (\n.south)--(\n.south |- tot.north);}
+\draw[arr] (tot.south -| opt.north)--(opt.north);
+\draw[arr] (opt)--(sel);
+\draw[arr] (sel.east)--++(0.45,0)|-node[pos=0.25,left,font=\scriptsize,align=right]{best\\checkpoint}(inf.west);
+\draw[arr] (inf)--(ev);
+% stage frames
+\begin{scope}[on background layer]
+\node[stage,fit=(in)(seg)(xc)(g)] (sA) {};
+\node[stage,fit=(mc)(md)(bb)(oc)(od)] (sB) {};
+\node[stage,fit=(lcls)(lpc)(lft)(gate)(tot)] (sC) {};
+\node[stage,fit=(opt)(sel)] (sD) {};
+\node[stage,fit=(inf)(ev),draw=deployedge] (sE) {};
+\end{scope}
+\node[stlab,fill=white,anchor=center] at (sA.north) {(a) Data preparation and paired views};
+\node[stlab,fill=white,anchor=center] at (sB.north) {(b) Shared frontend and backbone};
+\node[stlab,fill=white,anchor=center] at ([xshift=-4.6cm]sC.north) {(c) FT-RCL training objectives};
+\node[stlab,fill=white,anchor=west] at ([xshift=0.3cm]sD.north west) {(d) Optimization};
+\node[stlab,fill=white,anchor=center] at (sE.north) {(e) Inference and evaluation};
+\end{tikzpicture}}
+\caption{Overall end-to-end workflow of the proposed methodology. Orange blocks are used only during training; the deployed detector (green) keeps the single-view baseline inference graph.}
+\label{fig:pipeline-overview}
+\end{figure}

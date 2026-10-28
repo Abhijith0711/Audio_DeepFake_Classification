@@ -9,20 +9,19 @@ from tqdm import tqdm
 from src.datasets.atadd_manifest_dataset import audio_root_from_config, load_manifest_df, make_dataloader
 from src.evaluation.metrics import calculate_metrics
 from src.evaluation.plotting import save_confusion, save_roc
+from src.evaluation.prediction_analysis import type_average_f1
 from src.models.ft_rcl_detector import FTRCLDetector
 from src.models.mobilenet_v3_audio import MobileNetV3SmallAudio
 from src.training.frontend import MelFrontend, build_gpu_logmel
 
 
 def build_model_from_checkpoint(checkpoint, device):
-    config = checkpoint.get("config", {})
     mode = checkpoint.get("mode", "M0")
-    star = config.get("star_edge", {})
 
     if mode == "M0":
         model = MobileNetV3SmallAudio(num_classes=2)
     else:
-        model = FTRCLDetector(num_classes=2, use_cad=bool(star.get("use_cad", False)))
+        model = FTRCLDetector(num_classes=2)
 
     model.load_state_dict(checkpoint["model_state_dict"], strict=True)
     model.to(device)
@@ -132,6 +131,14 @@ def run_split_evaluation(
             all_scores.extend(scores.cpu().numpy().tolist())
 
     metrics, predictions = calculate_metrics(all_labels, all_scores)
+    pred_types = np.asarray([row["type"] for row in rows])
+    if len(pred_types) == len(all_labels) and len(all_labels):
+        metrics["type_avg_macro_f1"] = type_average_f1(
+            np.asarray(all_labels),
+            np.asarray(all_scores),
+            pred_types,
+            0.5,
+        )
 
     experiment_dir = Path(experiment_dir)
     experiment_dir.mkdir(parents=True, exist_ok=True)

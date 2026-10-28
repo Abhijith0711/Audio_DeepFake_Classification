@@ -1,0 +1,45 @@
+\chapter{Literature Review}
+\label{ch:literature}
+
+This chapter synthesizes the curated reference set of the project. It proceeds from speech-centric spoofing benchmarks to all-type audio deepfake detection, then to robustness under channel distortion, alternative detector designs, and multimodal work that bounds the scope of this study. It closes with the research gap that motivates the proposed method.
+
+\section{Evolution of audio spoofing and deepfake detection}
+
+Research on fake audio began in speaker-verification security, where replay, synthesis, and voice-conversion attacks motivated shared corpora and standardized metrics such as the equal error rate (EER)~\cite{kinnunen2017detection,wang2020asvspoof}. ASVspoof established rigorous logical-access evaluation for speech~\cite{wang2020asvspoof}, but its early protocols were predominantly \textbf{speech-centric}. Surveys and systematic reviews document the widening threat surface as synthetic content spans speech, music, singing, and environmental sound~\cite{shaaban2023ieeeAccess,zhang2025sensorsSurvey,alnaqbi2026systematic,nguyenle2026deepfakeSurvey,raza2026foundationSurvey}. Engineering-oriented reviews note that mel-spectrogram and CNN pipelines remain common baselines for investigators and practitioners~\cite{shaaban2025engineeringReports,mcuba2023deeplearning}, while larger self-supervised encoders lead accuracy rankings at higher compute cost~\cite{li2024sonar}.
+
+Generative modelling has increased the realism of TTS, vocoders, and general audio synthesis. Dataset-centric work such as WaveFake and FakeAVCeleb supports detection research on synthetic speech and multimodal forgeries~\cite{frank2021wavefake,khalid2021fakeavceleb}. \textbf{FakeSound} targets \emph{general} (not speech-only) fake audio detection and localization~\cite{xie2024fakesound}, motivating benchmarks in which music and environmental sound are first-class categories.
+
+\section{Benchmarks: from speech-only to all-type}
+
+\textbf{AT-ADD} (All-Type Audio Deepfake Detection)~\cite{xie2026atadd} addresses robust detection under realistic perturbations and type-agnostic evaluation across speech, singing, music, and environmental sound. Its Track~2 Macro-F1 is computed in two stages: F1 is averaged between real and fake \emph{within} each audio type, and the result is then averaged across types, so strong speech-only performance is insufficient. Challenge systems report a large gap between compact baselines and winners that use heavy self-supervised fusion~\cite{xie2026atadd,fan2026dualssl}.
+
+Recent all-type methods improve accuracy through audio large language models (ALLMs) and frequency-time reasoning: interpretable ALLM-based detection with reinforcement learning~\cite{xie2026ftgrpo}, dual-domain SSL fusion of EAT and XLS-R~\cite{fan2026dualssl}, and ALLM4ADD-style multimodal LLM prompting~\cite{gu2024allm4add}. These approaches define the \textbf{research gap} for edge-scale systems: the present project keeps inference at MobileNetV3-Small scale~\cite{howard2019mobilenetv3} and studies train-time robustness instead of deploying 300M-parameter encoders at test time.
+
+\section{Feature representations and frontends}
+
+Compact ADD pipelines typically use log-mel or MFCC-like frontends with CNN classifiers~\cite{shaaban2023ieeeAccess,mcuba2023deeplearning}. Similarly, Pham et al.\ evaluate linear filterbanks and dynamic LFCC features fine-tuned on off-the-shelf vision backbones including MobileNet-V3~\cite{pham2024deepfake}. Mcuba et al.\ compare MFCC, mel-spectrogram, chromagram, and raw spectrogram inputs with custom CNNs and VGG-16 and report architecture--frontend interactions that are relevant to the mel-CNN design choices in this project~\cite{mcuba2023deeplearning}. SSL-based detectors instead fine-tune Wav2Vec2, XLS-R, and related encoders; the Vicomtech ADD challenge system exemplifies robustness-oriented SSL fine-tuning under compression-like conditions~\cite{martindonas2022vicomtech}. Zhang et al.\ combine XLS-R with an SLS classifier~\cite{zhang2023sls}, illustrating the accuracy--cost trade-off relative to fixed mel frontends.
+
+\section{Robustness to compression, noise, and channel change}
+
+Multiple surveys highlight the sensitivity of detectors to codecs, bandwidth limiting, reverberation, and background noise~\cite{zhang2025sensorsSurvey,alnaqbi2026systematic,nguyenle2026deepfakeSurvey}. The Perturbed Public Voices (P2V) dataset explicitly supports robust ADD under public-voice perturbations~\cite{gao2024p2v}, and cross-domain ADD benchmarks analyse generalization when training and test domains differ~\cite{li2024crossdomain}. Imaging and multimodal studies discuss compression-aware forensic pipelines~\cite{salvi2023compressionRobust}, which is consistent with the degradation families used in FT-RCL training (resampling, MP3 coding, additive noise, and telephony band-limiting).
+
+Systematic reviews note that high in-dataset accuracy often fails to transfer under noise and adversarial manipulation~\cite{alnaqbi2026systematic,rabhi2024adversarial}. Rabhi et al.\ study adversarial attacks and countermeasures on audio-deepfake detectors~\cite{rabhi2024adversarial}, which supports the conservative robustness claims made in this report.
+
+\section{Consistency, trajectories, and alternative detectors}
+
+Beyond the standard classification loss, recent work explores embedding trajectories and partial-spoof localization. TRACE analyses speech foundation-model embedding trajectories for training-free partial deepfake detection~\cite{khan2026trace}; it is conceptually related to the severity-aware and coherence-based training of FT-RCL, although it is not used at inference here. VoiceRadar proposes micro-frequency compositional cues for voice deepfake detection~\cite{kumari2024voiceradar}, an alternative inductive bias to mel-CNN features. Privacy-preserving ADD (SafeEar) decouples content understanding from spoof scoring~\cite{li2023safear}, which corresponds to a different threat model from the binary AT-ADD Track~2 task.
+
+\section{Multimodal deepfake detection}
+
+Audio-visual fusion methods (AVoiD-DF, AVFF, X-AVDT, and joint audio-visual detection) achieve strong robustness by exploiting lip--speech consistency~\cite{yang2023avoiddf,oorloff2024avff,kim2026xavdt,zhou2019joint}. Hybrid and social-media-oriented frameworks further combine emotion or platform context~\cite{srikanth2023hybridEmotion,ugwumba2023multimodalFramework,hamed2023socialMediaReview}. \textbf{This project is audio-only} at inference, to match edge constraints and AT-ADD Track~2; the multimodal literature bounds the scope and motivates future cross-modal extensions.
+
+\section{Research gap}
+
+Synthesizing the above references, the following gaps motivate this project:
+
+\begin{enumerate}
+  \item \textbf{Domain imbalance.} Lightweight mel-CNN detectors achieve relatively strong performance on speech and singing but often struggle on music and environmental sound in clean evaluation~\cite{xie2026atadd,xie2024fakesound,alnaqbi2026systematic}.
+  \item \textbf{Clean accuracy versus channel robustness.} Surveys and empirical studies report generalization and robustness failures under noise and compression~\cite{nguyenle2026deepfakeSurvey,zhang2025sensorsSurvey,gao2024p2v}, yet compact systems rarely report clean metrics and $\Delta M$ under one reproducible recipe.
+  \item \textbf{Inference budget mismatch.} All-type leaders rely on SSL fusion and LLM-based reasoning~\cite{fan2026dualssl,xie2026ftgrpo,gu2024allm4add}, which are poor fits for strict edge latency without compression or distillation that are not evaluated here.
+  \item \textbf{Integrated Coherence Training.} Optimizes clean/degraded classification, prediction and band-wise coherence, severity curriculum, and checkpoint selection using a fixed MobileNetV3-Small backbone (FT-RCL M3).
+\end{enumerate}
