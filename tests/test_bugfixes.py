@@ -16,6 +16,14 @@ from src.training.losses.ft_rcl import ft_rcl_loss
 SR = 24000
 
 
+def test_subband_pool_stays_finite_under_fp16_autocast():
+    feat = (torch.randn(2, 576, 3, 13) * 1e-7).half()
+    with torch.amp.autocast("cpu", dtype=torch.float16):
+        sig = SubbandPool(8)(feat)
+    assert torch.isfinite(sig).all()
+    assert sig.dtype == torch.float32
+
+
 def test_subband_pool_never_returns_empty_bands():
     for height in (1, 3, 5, 8, 20):
         sig = SubbandPool(8)(torch.randn(2, 16, height, 7))
