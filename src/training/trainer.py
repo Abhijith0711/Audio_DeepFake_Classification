@@ -1,5 +1,4 @@
 import logging
-import time
 
 import numpy as np
 import pandas as pd
@@ -15,11 +14,18 @@ from src.training.losses.ft_rcl import ft_rcl_loss
 from src.training.run_artifacts import (
     append_train_log,
     save_training_history,
+    write_run_summary,
 )
 from src.training.schedulers.robustness_curriculum import (
     max_severity_for_epoch,
     severity_eta,
     should_early_stop,
+)
+from src.training.selection import (
+    cache_degraded_dev,
+    checkpoint_is_eligible,
+    metric_value,
+    selection_score,
 )
 
 logger = logging.getLogger(__name__)
@@ -44,18 +50,46 @@ class Trainer:
         self.device = device
         self.mode = mode
 
+        ft_cfg = config.get("ft_rcl", {})
+        self.beta = ft_cfg.get("beta", 0.5)
+        self.gamma_pc = ft_cfg.get("gamma_pc", 1.0)
+        self.gamma_ftsc = ft_cfg.get("gamma_ftsc", 0.5)
+        self.gate = ft_cfg.get("gate", "full")
+        self.pc_loss = ft_cfg.get("pc_loss", "mse")
+        self.uniform_type_weights = bool(ft_cfg.get("uniform_type_weights", False))
+        self.signature_stage = int(ft_cfg.get("signature_stage", 3))
+        self.type_alpha = ft_cfg.get(
+            "type_alpha",
+            {"speech": 1.0, "singing": 1.0, "music": 0.3, "sound": 0.5},
+        )
+        curriculum = ft_cfg.get("curriculum", {})
+        self.epoch_milestones = curriculum.get("epoch_milestones", [1, 6, 13])
+        self.severity_milestones = curriculum.get("severity_milestones", [1, 3, 4])
+        self.final_stage_epoch = int(self.epoch_milestones[-1]) if self.epoch_milestones else 1
+
+        selection_cfg = config.get("selection", {})
+        self.eligible_from_final_stage = bool(selection_cfg.get("eligible_from_final_stage", False))
+        self.use_degraded_dev = bool(selection_cfg.get("use_degraded_dev", False))
+        self.clean_metric = selection_cfg.get("clean_metric", "macro_f1")
+        self.degraded_dev_samples = int(selection_cfg.get("degraded_dev_samples", 256))
+        train_cfg = config["training"]
+        self.degraded_dev_seed = int(selection_cfg.get("degraded_dev_seed", train_cfg.get("seed", 42)))
+
         if mode == "M0":
             self.model = MobileNetV3SmallAudio(num_classes=2).to(device)
             self.subband = None
         else:
-            self.model = FTRCLDetector(num_classes=2).to(device)
+            self.model = FTRCLDetector(
+                num_classes=2,
+                signature_stage=self.signature_stage,
+            ).to(device)
             self.subband = self.model.subband_pool
 
         self.history = []
         self.best_score = -1e9
         self.best_epoch = 0
+        self.best_max_severity = None
 
-        train_cfg = config["training"]
         self.min_epoch_for_early_stop = int(train_cfg.get("min_epoch_for_early_stop", 1))
         self.amp_enabled = device.type == "cuda"
         self.scaler = torch.amp.GradScaler("cuda", enabled=self.amp_enabled)
@@ -73,18 +107,13 @@ class Trainer:
             patience=2,
         )
 
-        ft_cfg = config.get("ft_rcl", {})
-        self.beta = ft_cfg.get("beta", 0.5)
-        self.gamma_pc = ft_cfg.get("gamma_pc", 1.0)
-        self.gamma_ftsc = ft_cfg.get("gamma_ftsc", 0.5)
-        self.gate = ft_cfg.get("gate", "full")
-        self.type_alpha = ft_cfg.get(
-            "type_alpha",
-            {"speech": 1.0, "singing": 1.0, "music": 0.3, "sound": 0.5},
+    def checkpoint_eligible(self, epoch):
+        return checkpoint_is_eligible(
+            epoch,
+            self.mode,
+            self.eligible_from_final_stage,
+            self.final_stage_epoch,
         )
-        curriculum = ft_cfg.get("curriculum", {})
-        self.epoch_milestones = curriculum.get("epoch_milestones", [1, 6, 13])
-        self.severity_milestones = curriculum.get("severity_milestones", [1, 3, 4])
 
     def autocast(self):
         return torch.amp.autocast(
@@ -182,6 +211,8 @@ class Trainer:
                         gamma_ftsc=self.gamma_ftsc if self.mode == "M3" else 0.0,
                         criterion=criterion,
                         gate=self.gate,
+                        pc_loss=self.pc_loss,
+                        uniform_type_weights=self.uniform_type_weights,
                     )
 
                     logits = logits_c
@@ -265,22 +296,79 @@ class Trainer:
             metrics["type_avg_macro_f1"] = type_average_f1(labels_np, scores_np, types, 0.5)
         return metrics, labels_np, scores_np, all_meta
 
+    def _full_dev_clean_score(self, dev_metrics):
+        if self.clean_metric == "macro_f1":
+            return float(dev_metrics["macro_f1"])
+        if self.clean_metric == "type_avg_macro_f1":
+            value = dev_metrics.get("type_avg_macro_f1")
+            if value is None:
+                raise ValueError("type-averaged Macro-F1 is missing from the development metrics")
+            return float(value)
+        raise ValueError(
+            f"selection.clean_metric must be 'macro_f1' or 'type_avg_macro_f1', got {self.clean_metric!r}"
+        )
+
+    @torch.no_grad()
+    def _score_waves(self, waves):
+        self.model.eval()
+        batch_size = int(self.config["training"]["batch_size"])
+        scores = []
+        for start in range(0, len(waves), batch_size):
+            batch = torch.stack(waves[start:start + batch_size]).to(self.device)
+            x = self.frontend(batch)
+            with self.autocast():
+                if self.mode == "M0":
+                    logits = self.model(x)
+                else:
+                    logits, _, _ = self.model(x)
+            scores.extend(torch.softmax(logits.float(), dim=1)[:, 1].detach().cpu().tolist())
+        return scores
+
+    def _epoch_selection_score(self, dev_metrics, degraded_cache):
+        """Return the checkpoint score and the degraded score, if one was used."""
+        if not self.use_degraded_dev:
+            return self._full_dev_clean_score(dev_metrics), None
+
+        labels = degraded_cache["labels"]
+        types = degraded_cache["types"]
+        clean = metric_value(labels, self._score_waves(degraded_cache["clean_waves"]), types, self.clean_metric)
+        degraded = metric_value(
+            labels,
+            self._score_waves(degraded_cache["degraded_waves"]),
+            types,
+            self.clean_metric,
+        )
+        return selection_score(clean, degraded, use_degraded_dev=True), degraded
+
     def fit(self, train_loader, dev_loader, criterion, epochs, patience):
         epochs_without_improvement = 0
         best_path = self.experiment_dir / "best.pt"
         last_path = self.experiment_dir / "last.pt"
+        degraded_cache = None
+        if self.use_degraded_dev:
+            degraded_cache = cache_degraded_dev(
+                dev_loader.dataset,
+                self.degraded_dev_samples,
+                self.degraded_dev_seed,
+            )
+            logger.info(
+                "Degraded development subset: %s clips, seed %s",
+                len(degraded_cache["labels"]),
+                self.degraded_dev_seed,
+            )
 
         for epoch in range(1, epochs + 1):
-            t0 = time.time()
-
-            if hasattr(train_loader.dataset, "set_max_severity"):
-                max_sev = max_severity_for_epoch(epoch, self.epoch_milestones, self.severity_milestones)
-                train_loader.dataset.set_max_severity(max_sev)
+            if self.mode == "M0":
+                max_sev = None
+            else:
+                max_sev = int(max_severity_for_epoch(epoch, self.epoch_milestones, self.severity_milestones))
+                if hasattr(train_loader.dataset, "set_max_severity"):
+                    train_loader.dataset.set_max_severity(max_sev)
 
             train_loss, train_acc = self.train_one_epoch(train_loader, criterion, epoch)
             dev_metrics, _, _, _ = self.evaluate_loader(dev_loader, criterion, "Dev")
-
-            selection_score = dev_metrics["macro_f1"]
+            epoch_score, degraded_score = self._epoch_selection_score(dev_metrics, degraded_cache)
+            eligible = self.checkpoint_eligible(epoch)
 
             row = {
                 "epoch": epoch,
@@ -292,7 +380,10 @@ class Trainer:
                 "dev_auroc": dev_metrics["auroc"],
                 "dev_eer": dev_metrics["eer"],
                 "dev_accuracy": dev_metrics["accuracy"],
-                "selection_score": selection_score,
+                "selection_score": epoch_score,
+                "dev_degraded_score": degraded_score,
+                "max_severity": max_sev,
+                "checkpoint_eligible": eligible,
                 "lr": self.optimizer.param_groups[0]["lr"],
                 "mode": self.mode,
             }
@@ -302,15 +393,17 @@ class Trainer:
             save_training_history(self.experiment_dir, self.history)
 
             logger.info(
-                "Epoch %s/%s train_loss=%.4f dev_macro_f1=%.4f dev_eer=%.4f",
+                "Epoch %s/%s train_loss=%.4f dev_macro_f1=%.4f dev_eer=%.4f max_severity=%s eligible=%s",
                 epoch,
                 epochs,
                 train_loss,
                 dev_metrics["macro_f1"],
                 dev_metrics["eer"],
+                max_sev,
+                eligible,
             )
 
-            self.scheduler.step(dev_metrics["macro_f1"])
+            self.scheduler.step(epoch_score)
 
             checkpoint = {
                 "epoch": epoch,
@@ -321,17 +414,24 @@ class Trainer:
                 "mode": self.mode,
                 "mel_mean": self.frontend.mel_mean,
                 "mel_std": self.frontend.mel_std,
-                "best_score": selection_score,
+                "best_score": epoch_score,
+                "max_severity": max_sev,
+                "checkpoint_eligible": eligible,
             }
 
             torch.save(checkpoint, last_path)
 
-            if selection_score > self.best_score:
-                self.best_score = selection_score
+            if eligible and epoch_score > self.best_score:
+                self.best_score = epoch_score
                 self.best_epoch = epoch
+                self.best_max_severity = max_sev
                 epochs_without_improvement = 0
                 torch.save(checkpoint, best_path)
-                logger.info("  -> saved new best checkpoint (dev_macro_f1=%.4f)", selection_score)
+                logger.info(
+                    "  -> saved new best checkpoint (score=%.4f, max_severity=%s)",
+                    epoch_score,
+                    max_sev,
+                )
             else:
                 epochs_without_improvement += 1
 
@@ -343,6 +443,23 @@ class Trainer:
             ):
                 logger.info("Early stopping at epoch %s", epoch)
                 break
+
+        summary = {
+            "mode": self.mode,
+            "best_epoch": self.best_epoch or None,
+            "best_selection_score": None if self.best_epoch == 0 else self.best_score,
+            "selected_max_severity": self.best_max_severity,
+            "eligible_from_final_stage": self.eligible_from_final_stage,
+            "use_degraded_dev": self.use_degraded_dev,
+            "clean_metric": self.clean_metric,
+        }
+        write_run_summary(self.experiment_dir, summary)
+        logger.info(
+            "Selected checkpoint epoch=%s max_severity=%s score=%s",
+            summary["best_epoch"],
+            summary["selected_max_severity"],
+            summary["best_selection_score"],
+        )
 
         history_df = pd.DataFrame(self.history)
         save_training_curves(history_df, self.figure_dir, self.experiment_dir.name)

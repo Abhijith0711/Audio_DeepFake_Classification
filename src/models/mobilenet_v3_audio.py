@@ -24,12 +24,34 @@ class MobileNetV3SmallAudio(nn.Module):
 
         self.backbone.features[0][0] = new_conv
 
-    def forward(self, x, return_features=False):
-        x = self.backbone.features(x)
+    def forward(self, x, return_features=False, tap=None):
+        """Logits, optionally with the last feature map and the output of block ``tap``.
+
+        ``tap`` is a feature-block index. FT-RCL uses it to read a signature from an
+        earlier block, where the frequency axis still has enough rows for separate bands.
+        """
+        mid = None
+
+        if tap is None:
+            x = self.backbone.features(x)
+        else:
+            for index, block in enumerate(self.backbone.features):
+                x = block(x)
+                if index == tap:
+                    mid = x
+            if mid is None:
+                raise ValueError(
+                    f"signature tap {tap} is outside MobileNetV3-Small "
+                    f"({len(self.backbone.features)} feature blocks)"
+                )
+
         feat_map = x
         x = self.backbone.avgpool(x)
         x = torch.flatten(x, 1)
         logits = self.backbone.classifier(x)
+
+        if tap is not None:
+            return logits, feat_map, mid
 
         if return_features:
             return logits, feat_map
