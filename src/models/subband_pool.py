@@ -4,12 +4,13 @@ import torch.nn.functional as F
 
 
 class SubbandPool(nn.Module):
-    """Pool a (B, C, F, T) feature map into `num_bands` frequency-band descriptors.
+    """Pool a (B, C, F, T) feature map into `num_bands` L2-normalized band vectors.
 
-    MobileNetV3-Small downsamples frequency by 32, so an 80-bin mel input leaves
-    only 3 rows at the last layer. Fixed-size slicing then produces empty (NaN)
-    bands, so bands are made with adaptive average pooling over frequency, which
-    never yields an empty band (neighbouring bands overlap when F < num_bands).
+    Band edges match adaptive average pooling, so a band is never empty. When F
+    is smaller than `num_bands`, neighbours overlap and some vectors match. The
+    FT-RCL signature is therefore taken from an earlier block (about 10 frequency
+    rows), not the last map (3 rows for 80 mel bins). Pooling stays in FP32:
+    float16 normalization underflows and returns NaN.
     """
 
     def __init__(self, num_bands=8):

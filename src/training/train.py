@@ -20,6 +20,7 @@ from src.datasets.atadd_manifest_dataset import (
 )
 from src.datasets.paired_robustness_dataset import PairedRobustnessDataset
 from src.evaluation.eval_runner import compare_to_e1_baseline, run_split_evaluation
+from src.training.config_overrides import apply_overrides
 from src.training.frontend import MelFrontend, build_gpu_logmel, load_or_compute_mel_stats
 from src.training.run_artifacts import (
     print_metrics_table,
@@ -121,6 +122,14 @@ def main():
         help="Use this fraction of each split (train/dev/eval), stratified by label. E.g. 0.3",
     )
     parser.add_argument("--eval-splits", default="eval", help="Comma-separated splits after train")
+    parser.add_argument(
+        "--set",
+        dest="overrides",
+        action="append",
+        default=[],
+        metavar="KEY=VALUE",
+        help="Override a config value, e.g. --set ft_rcl.gamma_ftsc=0.0",
+    )
     args = parser.parse_args()
 
     mode = "M0" if args.mode == "clean" else args.mode
@@ -133,6 +142,8 @@ def main():
 
     if args.seed is not None:
         config["training"]["seed"] = args.seed
+
+    apply_overrides(config, args.overrides)
 
     sample_fraction = resolve_sample_fraction(config, args.data_fraction)
     sample_seed = config["training"]["seed"]
