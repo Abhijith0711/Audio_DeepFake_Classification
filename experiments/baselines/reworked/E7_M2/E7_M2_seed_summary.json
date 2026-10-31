@@ -1,0 +1,32 @@
+[
+  {
+    "seed_tag": "seed1",
+    "seed": 42,
+    "best_epoch": 3,
+    "dev_macro_f1": 0.6759286189915108,
+    "eval_macro_f1": 0.5743637007307667,
+    "eval_type_avg_macro_f1": 0.47206300022864034,
+    "eval_eer": 0.24524129146674928,
+    "eval_auroc": 0.8353108478154452
+  },
+  {
+    "seed_tag": "seed2",
+    "seed": 1337,
+    "best_epoch": 4,
+    "dev_macro_f1": 0.6909405373761959,
+    "eval_macro_f1": 0.6379815739822932,
+    "eval_type_avg_macro_f1": 0.5502917496920396,
+    "eval_eer": 0.23123701396901153,
+    "eval_auroc": 0.8479195671983852
+  },
+  {
+    "seed_tag": "seed3",
+    "seed": 2024,
+    "best_epoch": 6,
+    "dev_macro_f1": 0.6602063270378402,
+    "eval_macro_f1": 0.5898455049939535,
+    "eval_type_avg_macro_f1": 0.5271966390829478,
+    "eval_eer": 0.205329516397588,
+    "eval_auroc": 0.8741788752284424
+  }
+]

@@ -140,14 +140,17 @@ class Trainer:
 
                 self.optimizer.zero_grad(set_to_none=True)
 
-                # Forward passes run under autocast; every loss term is computed in FP32 below.
+                # Log-mel stays in FP32. Float16 autocast underflows log(1e-10) to -inf.
+                if self.mode == "M1":
+                    x_deg = self.frontend(deg_w)
+                else:
+                    x_clean = self.frontend(clean_w)
+                    x_deg = self.frontend(deg_w)
+
                 with self.autocast():
                     if self.mode == "M1":
-                        x_deg = self.frontend(deg_w)
                         logits, _, _ = self.model(x_deg, waveforms=deg_w, current_epoch=epoch)
                     else:
-                        x_clean = self.frontend(clean_w)
-                        x_deg = self.frontend(deg_w)
                         logits_c, sig_c, _ = self.model(
                             x_clean,
                             waveforms=clean_w,

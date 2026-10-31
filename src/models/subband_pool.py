@@ -17,16 +17,19 @@ class SubbandPool(nn.Module):
         self.num_bands = num_bands
 
     def forward(self, feat_map):
-        freq_profile = feat_map.mean(dim=3)  # (B, C, H)
-        height = freq_profile.shape[2]
-        bands = []
+        # Autocast leaves these maps near the float16 underflow limit. Normalizing
+        # them in float16 divides by zero and returns NaN, which makes the M3 loss NaN.
+        with torch.amp.autocast(device_type=feat_map.device.type, enabled=False):
+            freq_profile = feat_map.float().mean(dim=3)  # (B, C, H)
+            height = freq_profile.shape[2]
+            bands = []
 
-        # Same bin boundaries as adaptive average pooling; written with slices because
-        # adaptive pooling with non-divisible sizes is not implemented on every backend.
-        for k in range(self.num_bands):
-            start = (k * height) // self.num_bands
-            end = -((-(k + 1) * height) // self.num_bands)
-            bands.append(freq_profile[:, :, start:end].mean(dim=2))
+            # Same bin boundaries as adaptive average pooling; written with slices because
+            # adaptive pooling with non-divisible sizes is not implemented on every backend.
+            for k in range(self.num_bands):
+                start = (k * height) // self.num_bands
+                end = -((-(k + 1) * height) // self.num_bands)
+                bands.append(freq_profile[:, :, start:end].mean(dim=2))
 
-        signature = torch.stack(bands, dim=1)
-        return F.normalize(signature, p=2, dim=-1)
+            signature = torch.stack(bands, dim=1)
+            return F.normalize(signature, p=2, dim=-1)
