@@ -70,12 +70,17 @@ def audio_root_from_config(config):
 
 
 def audio_path_from_row(row, project_root, audio_root_name=None):
-    """Resolve a clip under its original folder.
+    """Resolve explicit generated paths or clips under their original folder.
 
     Reworked manifests keep `split` as the experiment split and `folder` as the
     directory that actually holds the file. Looking up `split/name` misses clips
     that were reassigned across train, dev, and eval.
     """
+    explicit_path = row.get("audio_path") if hasattr(row, "get") else None
+    if explicit_path is not None and pd.notna(explicit_path) and str(explicit_path):
+        path = Path(str(explicit_path))
+        return path if path.is_absolute() else Path(project_root) / path
+
     root = resolve_audio_root(project_root, audio_root_name)
     folder = row["folder"] if "folder" in row and pd.notna(row["folder"]) else row["split"]
     return root / str(folder) / str(row["name"])

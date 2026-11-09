@@ -77,6 +77,19 @@ To investigate synthetic audio detection beyond isolated speech, the research mi
 | **Evaluation Partition** | 71,237 samples | **44,289 samples** (`data/manifests/AT_ADD/eval_manifest.csv`) | 44,289 samples (`data/manifests/eval_manifest.csv`) |
 | **Evaluation Challenge** | Unseen voice conversion & TTS algorithms | Cross-domain acoustic shifts & 38 unseen generative architectures | Cross-domain acoustic shifts & 38 unseen generative architectures |
 
+### Offline Audio Robustness Variants
+
+Generate condition-specific audio files and a CSV manifest from a dataset manifest containing `name`, `label`, and `split` columns. Each variant is transformed independently from its clean source. The default condition set includes MP3 (64/128/192 kbps), AAC (32/48/64 kbps), Opus (32/64/128 kbps), down/up-resampling (16/12/8 kHz), additive noise (20/10/5 dB SNR), and telephony band-limiting (300–3400 Hz), plus clean source rows.
+
+```powershell
+python scripts\generate_robustness_dataset.py `
+  --manifest data\manifests\train_manifest.csv `
+  --audio-root path\to\audio `
+  --output-root data\robustness\train
+```
+
+FFmpeg is required for codec variants. The generated `robustness_manifest.csv` preserves labels and splits and includes `audio_path` entries that the project dataset loader can use directly. Use `--conditions` with comma-separated names (listed by `--list-conditions`) to generate a subset, and `--target-sample-rate` to change the output rate for resampling, noise, and telephony WAVs.
+
 ---
 
 ## Model Architectures
@@ -352,4 +365,3 @@ Audio_DeepFake_Classification/
 ```
 
 ---
-
