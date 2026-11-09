@@ -2,7 +2,7 @@
 ## Audio Deepfake Classification — Modular Training, Robustness, and Evaluation
 
 **Document purpose:** Single reference for supervisors and reviewers describing what the repository implements today: architecture, algorithms, file layout, commands, artifacts, and quality gates.  
-**Scope:** AT-ADD Track 2 pipeline at 24 kHz (E1 v4 baseline) plus robustness-aware training (FT-RCL and optional STAR-Edge). ASVspoof notebooks and baselines remain in the repository but are outside this modular training path unless extended similarly.  
+**Scope:** AT-ADD Track 2 pipeline at 24 kHz (E1 v4 baseline) plus robustness-aware training (M0–M3, including FT-RCL). STAR-Edge is future work and is not in the training code. ASVspoof notebooks and baselines remain in the repository but are outside this modular training path unless extended similarly.  
 **Status:** Implementation complete for Phases 0–2 and evaluation skeleton (Phase 4); edge compression (separate design folder under `docs/edge/`) is specified but not coded in `src/deployment/`.
 
 ---
@@ -16,7 +16,7 @@ Two layers of capability exist:
 | Layer | Purpose |
 |--------|---------|
 | **Baseline (E1 v4)** | Clean-audio training and eval; must match published E1 v4 metrics within a fixed tolerance on the frozen eval split. |
-| **Robustness-aware training (E7)** | Same backbone and preprocessing, but training uses **paired clean/degraded views**, **consistency losses** on predictions and frequency-band features, **curriculum over degradation severity**, and optional **ΔM-aware checkpoint selection** on the development split. |
+| **Robustness-aware training (E7)** | Same backbone and preprocessing, but training uses **paired clean/degraded views**, **consistency losses** on predictions and frequency-band features, and a **curriculum over degradation severity**. Every mode selects its checkpoint by **development macro-F1**. |
 
 Design principle: **degradation is applied in the waveform domain**; mel extraction and global normalization stay **identical** to the baseline so comparisons are fair.
 
@@ -58,7 +58,7 @@ Design principle: **degradation is applied in the waveform domain**; mel extract
                     ┌──────────────────┴──────────────────┐
                     ▼                                     ▼
              Training loop                          Evaluation harness
-         (CE, FT-RCL, STAR-Edge)              (F1, AUROC, EER, ΔM, plots)
+         (CE, FT-RCL)                     (F1, AUROC, EER, ΔM, plots)
                     │
                     ▼
          experiments/{id}/ + results/{figures,logs,tables}/
@@ -82,13 +82,12 @@ Audio_DeepFake_Classification/
 ├── configs/
 │   ├── baselines/e1_atadd_v4.yaml
 │   └── proposed/
-│       ├── e7_ft_rcl_atadd_v1.yaml
-│       └── e7_star_edge_atadd_v1.yaml
+│       └── e7_ft_rcl_atadd_v1.yaml
 ├── data/
 │   └── manifests/                   # train/dev/eval CSVs (AT-ADD)
 ├── src/
 │   ├── preprocessing/preprocess_atadd_v4.py   # CANONICAL mel frontend (do not fork)
-│   ├── models/                      # MobileNet, SubbandPool, FT-RCL wrapper, STAR-Edge helpers
+│   ├── models/                      # MobileNet, SubbandPool, FT-RCL wrapper
 │   ├── datasets/                    # Manifest loaders, paired robustness dataset
 │   ├── robustness/                  # Conditions, degrade API, matrix builder
 │   ├── training/                    # train CLI, trainer, losses, curriculum
@@ -255,9 +254,7 @@ Collate functions stack tensors and pass metadata as lists for gating and loggin
 | Module | Role |
 |--------|------|
 | `subband_pool.py` | Splits last spatial feature map into **K=8** horizontal bands; mean-pool each band → **8-D signature**, L2-normalized |
-| `ft_rcl_detector.py` | Wraps MobileNet + SubbandPool; optional channel encoder for STAR-Edge |
-| `channel_encoder.py` | Handcrafted waveform stats (RMS, crest, flatness, ZCR) → small MLP → channel code **u** |
-| `artifact_projector.py` | Linear projection removing component of **z** along **u** (disentanglement helper) |
+| `ft_rcl_detector.py` | Wraps MobileNet + SubbandPool for M1–M3 |
 
 For **M0**, only `MobileNetV3SmallAudio` is instantiated. For **M1–M3**, `FTRCLDetector` is used.
 
@@ -301,13 +298,7 @@ Writes degraded FLACs and a CSV linking clean path, degraded path, labels, and c
 - **Frequency-time signature coherence (FTSC):** 1 − cosine(s_clean, s_deg) on subband signatures.  
 - **Gating (M3):** w_rob = α_type × confidence × η(severity); confidence = 2×|p_clean − 0.5|; α_type defaults: speech/singing 1.0, music 0.3, sound 0.5.
 
-**STAR-Edge** (`star_edge.py`), optional when enabled in config:
-
-- **STC:** Penalize jumps along a severity ladder in signature and probability space.  
-- **ABR:** Asymmetric margin loss on **real** clips so degraded fake-score does not exceed clean by margin m (default 0.05).  
-- **CAD:** Auxiliary CE predicting degradation family from channel code **u**.
-
-Combined with FT-RCL terms; weights δ (STC), ρ (ABR) in YAML.
+STAR-Edge (severity trajectory, channel–artifact disentanglement, asymmetric bona-fide robustness) is future work. It is not imported by the trainer.
 
 ### 8.5 Severity curriculum
 
@@ -336,15 +327,9 @@ CLI flag `--mode` accepts `clean`, `M0`, `M1`, `M2`, `M3`.
 
 ### 8.7 Checkpoint selection
 
-**Baseline:** Best dev **macro-F1** (same as notebook).
+M0, M1, M2, and M3 all keep the checkpoint with the best development **macro-F1**. Development EER and type-averaged macro-F1 are logged every epoch. The J-score is not used.
 
-**FT-RCL (configurable):** Score on dev:
-
-```text
-J = MacroF1_clean − λ × mean(ΔMacroF1)
-```
-
-λ default 0.5. ΔMacroF1 estimated on a **small number of dev batches** (default 5) with on-the-fly degradations for speed; increase `selection.delta_max_batches` for fuller estimates.
+Early stopping is held until `training.min_epoch_for_early_stop` (14 in the reworked config), which is the epoch after severity 4 starts. The reworked run uses 40 epochs and patience 5.
 
 Checkpoints store: model state, optimizer, scheduler, mode, mel mean/std, config snapshot.
 
@@ -413,11 +398,18 @@ python -m src.training.train \
 
 | File | Use |
 |------|-----|
-| `configs/baselines/e1_atadd_v4.yaml` | E1 reproduction; `selection.use_j_score: false` |
-| `configs/proposed/e7_ft_rcl_atadd_v1.yaml` | FT-RCL; J-score enabled; STAR-Edge off |
-| `configs/proposed/e7_star_edge_atadd_v1.yaml` | FT-RCL + STAR-Edge flags on |
+| `configs/baselines/e1_atadd_v4.yaml` | E1 reproduction on the original manifests |
+| `configs/proposed/e7_ft_rcl_atadd_v1.yaml` | M0–M3 on the full `reworked_subset`; checkpoint rule is development macro-F1 |
 
-Shared keys: dataset manifest paths, audio/spectrogram blocks, training hyperparameters, `logmel_stats_path`, `baseline_metrics_path`, `ft_rcl.*`, `star_edge.*`.
+Shared keys: dataset manifest paths, audio/spectrogram blocks, training hyperparameters, `logmel_stats_path`, `baseline_metrics_path`, `ft_rcl.*`.
+
+Three-seed runs:
+
+```bash
+python scripts/run_e7_reworked_seeds.py
+```
+
+Seeds are seed1=42, seed2=1337, seed3=2024. The summary table is `results/tables/e7_reworked_seed_summary.csv` (mean and variance of macro-F1, EER, and type-averaged macro-F1).
 
 ---
 
@@ -428,10 +420,10 @@ Under **`experiments/{experiment_id}/`:**
 | Artifact | Content |
 |----------|---------|
 | `config_resolved.yaml` | Full resolved config + git commit hash when available |
-| `train_log.jsonl` | One JSON object per epoch (loss, acc, dev metrics, J, lr, mode) |
+| `train_log.jsonl` | One JSON object per epoch (loss, acc, dev macro-F1, dev EER, lr, mode) |
 | `training_history.csv` | Same columns for plotting/pandas |
 | `best.pt` / `last.pt` | Weights + optimizer + scheduler + mel stats |
-| `eval_metrics_{split}.json` | macro_f1, accuracy, auroc, eer, eer_threshold |
+| `eval_metrics_{split}.json` | macro_f1, type_avg_macro_f1, accuracy, auroc, eer, eer_threshold |
 | `eval_predictions_{split}.csv` | filepath, label, score, pred, type, generator |
 | `eval_by_type_{split}.csv` | Per-type metrics |
 | `eval_by_generator_{split}.csv` | Fake recall by generator when applicable |
@@ -524,8 +516,7 @@ Notebook baselines (E2 GRU/LSTM, ASV paths) remain for historical comparison but
 |--------|----------------|
 | Raw AT-ADD audio | Must be present locally; not stored in git |
 | MP3 degradations | Need ffmpeg; otherwise ladder is partial |
-| Dev Δ for J-score | Subsampled batches by default; configurable |
-| STAR-Edge CAD | Channel auxiliary + losses wired; full logits-from-artifact-subspace is simplified |
+| STAR-Edge | Future work. Design note only in `docs/proposed/01_NOVEL_METHOD_FT-RCL_SPEC.md` §11. `docs/edge/` is unchanged |
 | Conditioned eval at scale | Matrix builder pre-generates eval degradations; train uses online degrade |
 | Edge deployment | Specified under `docs/edge/` (compression, quantization, latency tables); **not** implemented in `src/deployment/` yet |
 | E8 ablation grid | Documented under `experiments/proposed/E8_ablations/`; run by toggling YAML flags |
@@ -537,10 +528,10 @@ Notebook baselines (E2 GRU/LSTM, ASV paths) remain for historical comparison but
 Detailed algorithm prose and ablation plans live in:
 
 - `docs/proposed/00_PIPELINE_PREREQUISITES.md` — interfaces and gates  
-- `docs/proposed/01_NOVEL_METHOD_FT-RCL_SPEC.md` — FT-RCL and STAR-Edge math  
+- `docs/proposed/01_NOVEL_METHOD_FT-RCL_SPEC.md` — FT-RCL math; STAR-Edge section is future work  
 - `docs/proposed/02_EXPERIMENT_AND_ABLATION_PLAN.md` — experiment IDs  
 
-**This master document** describes the **actual code paths and artifacts** that implement those specs; where the code is simplified (e.g. approximate dev Δ, partial CAD), Section 16 applies.
+**This master document** describes the **actual code paths and artifacts** that implement those specs. Section 16 lists what is not in the code.
 
 ---
 
@@ -552,7 +543,7 @@ Detailed algorithm prose and ablation plans live in:
 | **E1 v4** | MobileNetV3-Small baseline at 24 kHz with repeat-pad |
 | **E7** | Proposed robustness-aware training experiment family |
 | **FT-RCL** | Frequency-Time Robustness Coherence Learning |
-| **STAR-Edge** | Extension: severity trajectory, channel–artifact disentanglement, asymmetric bona-fide robustness |
+| **STAR-Edge** | Future-work extension: severity trajectory, channel–artifact disentanglement, asymmetric bona-fide robustness. Not in the training code |
 | **ΔM** | Drop in metric M under channel degradation vs clean |
 | **EER** | Equal error rate |
 | **GPULogMel** | Torch module for batched STFT/mel/log on GPU |

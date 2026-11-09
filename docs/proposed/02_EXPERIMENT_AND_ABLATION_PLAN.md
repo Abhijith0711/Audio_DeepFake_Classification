@@ -70,9 +70,10 @@ Compare modes on **same** splits and seed:
 
 - `γ_2 ∈ {0.25, 0.5, 1.0}`  
 - `α_music ∈ {0.2, 0.3, 0.5}`  
-- `λ` in checkpoint score ∈ {0.3, 0.5, 0.7}  
 
-**Record:** seed, config hash, checkpoint path, dev vs eval metrics.
+Checkpoint selection is development macro-F1 for M0, M1, M2, and M3. The J-score is not used.
+
+**Record:** seed, config hash, checkpoint path, dev vs eval macro-F1 and EER. Across seeds 42, 1337, and 2024, report mean and variance.
 
 ---
 

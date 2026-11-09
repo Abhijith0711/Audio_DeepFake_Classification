@@ -13,11 +13,19 @@ def save_training_curves(history_df, out_dir, experiment_id):
     out_dir.mkdir(parents=True, exist_ok=True)
 
     fig, ax = plt.subplots(figsize=(8, 4))
-    ax.plot(history_df["epoch"], history_df["train_loss"], label="train_loss")
+    loss_series = None
+    if "train_loss" in history_df.columns:
+        loss_series = pd.to_numeric(history_df["train_loss"], errors="coerce")
+    has_loss = loss_series is not None and loss_series.notna().any()
+    if has_loss:
+        ax.plot(history_df["epoch"], loss_series, label="train_loss")
     if "train_acc" in history_df.columns:
-        ax.plot(history_df["epoch"], history_df["train_acc"], label="train_acc")
+        acc = pd.to_numeric(history_df["train_acc"], errors="coerce")
+        if acc.notna().any():
+            ax.plot(history_df["epoch"], acc, label="train_acc")
     ax.set_xlabel("epoch")
-    ax.legend()
+    if has_loss or ("train_acc" in history_df.columns):
+        ax.legend()
     fig.tight_layout()
     fig.savefig(out_dir / "training_loss_accuracy.png", dpi=200)
     plt.close(fig)

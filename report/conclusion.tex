@@ -1,0 +1,53 @@
+\chapter{Conclusion and Future Work}
+\label{ch:conclusion}
+
+\section{Conclusion}
+
+This work evaluated clean baseline selection and robustness-oriented learning on the multi-type AT-ADD Track~2 benchmark. During the clean baseline selection stage, three candidate detector configurations were evaluated across three independent training seeds: a compact scratch-trained CNN (E1, MobileNetV3-Small), a temporal recurrent alternative (E2, MobileNetV3-Small + GRU), and an AudioSet-pretrained network (E3, PANNs MobileNetV2). E3 demonstrated the strongest clean performance ($F1_{\mathrm{type\text{-}avg}}=0.6274$, AUROC 0.8800, EER 0.1993) and substantially superior cross-seed stability, and was therefore selected as the definitive clean baseline M0. M0 then serves as the clean reference model for subsequent stages. In parallel exploratory experiments on the compact MobileNetV3-Small architecture (1.52\,M parameters), we investigated two training-time regularisation methods, FT-RCL and its extension STAR-Edge, testing whether agreement between clean and degraded views makes a compact detector more robust without enlarging it. On the evidence we have, the answer is open.
+
+What the data show is this. In the clean baseline selection across the full 44{,}289 evaluation manifest, E3 achieves 0.627 type-averaged Macro-F1 compared to 0.515 for E1 and 0.504 for E2. On the 13{,}287-clip exploratory subset evaluated against the compact MobileNetV3-Small baseline (0.587 type-averaged Macro-F1), FT-RCL achieves 0.589 and STAR-Edge 0.599. FT-RCL is not better than the compact baseline on any clean metric: its pooled Macro-F1 is 0.013 lower and its EER 1.8 points higher. STAR-Edge has the best AUROC and type-averaged score on that subset, mainly through better results on music and sound, but its pooled Macro-F1 is lower than the baseline's. All models detect speech and singing with an EER of 16--21\% and are close to chance on music and sound (EER 0.34--0.47). The 0.91--0.93 Macro-F1 on the official development split is not a sign of overfitting but of a benchmark whose development fakes come from the same 29 generators as the training fakes.
+
+What the data do not show is whether any of the methods improves robustness to compression or noise. The degraded-audio pilot contained only fake music, used one noise waveform for all clips, and could not apply the MP3 condition; its values therefore do not constitute valid evidence of channel robustness. The control modes that would separate agreement losses from augmentation (M1 and M2) were not run. Latency, memory and quantised accuracy were not measured on physical edge hardware. This work is a study of robustness-oriented training of compact detectors on AT-ADD and an audit of the pipeline that supports it.
+
+The audit itself is a key contribution. We identified and corrected a signature module with empty bands, a curriculum that did not reach the data-loading workers, a robustness-drop estimate computed on fake music, identical noise for all clips, a silent fallback for missing codec tools and a lenient checkpoint loader. Documenting these failure modes provides essential guidance for future robust audio deepfake detection pipelines.
+
+\section{Limitations}
+
+\begin{itemize}
+  \item \textbf{Training scale.} Downstream regularisation models were trained on an exploratory subset of 13{,}800 clips, once, for at most 20 epochs, on a CPU. The compact baseline had not converged and the models were chosen by different rules.
+  \item \textbf{Evidence on robustness.} There are no valid degraded-audio results, so H1, H2 and H4 are untested.
+  \item \textbf{Evaluation manifests.} The primary baseline selection (E1, E2, E3) was evaluated on the full 44{,}289-clip evaluation manifest across three seeds. Downstream regularisation comparisons utilized the 13{,}287-clip exploratory evaluation subset.
+  \item \textbf{Seed replication.} While the clean baseline selection stage evaluated three independent random seeds with verified mean and sample standard deviations, downstream regularisation runs (FT-RCL and STAR-Edge) were conducted with single seeds. Three seeds provide repeated-run evidence but are not an exhaustive multi-seed study.
+  \item \textbf{Validation protocol.} Model selection used the official development split, which shares generators with training.
+  \item \textbf{Edge claims.} Parameter counts, weight sizes, and theoretical MACs were quantified. However, parameter count alone does not establish edge deployment suitability: batch-one latency, memory footprint, cache locality, and INT8 quantised accuracy on target hardware were not empirically measured.
+  \item \textbf{Scope of cues.} The shortcut analysis covers duration, loudness, silence and bandwidth only; speaker and recording-source leakage could not be checked with the available metadata.
+  \item \textbf{Model capacity trade-off.} Selected baseline M0 (E3, 3.54\,M parameters) is larger than the compact E1 and E2 candidates (1.52\,M and 1.20\,M parameters). While pretraining on AudioSet provided decisive accuracy and stability gains for M0, the downstream regularisation experiments were confined to the compact scratch MobileNetV3-Small architecture.
+\end{itemize}
+
+\section{Ethical considerations}
+
+A detector can be used both to protect and to harm. Published detectors help attackers tune synthetic audio until it passes, which is a reason to release code but not trained weights or tuned thresholds. A more immediate risk is a false accusation: at the error rates reported here a genuine speaker would be flagged in a noticeable share of cases, so scores from these models must not be used as the only evidence against a person. The benchmark is limited in language and speaker coverage; we did not test accents, dialects, children or people with speech impairments, and detectors tend to work worse for groups that are under-represented in training data. Running the detector on a phone keeps audio on the device, which is good for privacy, but the same capability can be used to screen calls covertly, so deployment should be transparent to the people recorded.
+
+\section{Future work}
+
+\begin{enumerate}[label=\textbf{\arabic*.},leftmargin=*,itemsep=0.3em]
+  \item \textbf{A valid robustness evaluation.} Evaluate on a stratified sample of the whole evaluation list with per-clip noise, MP3 coding, and conditions not used in training (AAC, Opus, G.711 telephony, reverberation, packet loss), using AUROC-based drops, and check how well the severity ranks match the measured drops.
+  \item \textbf{Ablations and seeds.} Run M1 and M2 and an ungated variant, compare Kullback--Leibler and Jensen--Shannon agreement terms, vary the type weights and the loss coefficients, and repeat the main comparison with three to five seeds and the same checkpoint rule for every model.
+  \item \textbf{A generator-disjoint validation set} built from the training list, used for model selection and for training to convergence.
+  \item \textbf{A better signature design.} Take the signature from a layer with finer frequency resolution, and complete STAR-Edge with a trajectory over several severities.
+  \item \textbf{Single-factor frontend experiments} on ASVspoof (padding only, sampling rate only) and tests on additional corpora (In-the-Wild, FakeSound, ASVspoof~5).
+  \item \textbf{Whole-recording scoring} by averaging over windows, since music and sound clips are ten seconds long.
+  \item \textbf{Edge measurements and alternatives.} Measure batch-one latency with the mel step, peak memory and INT8 accuracy on a phone or single-board computer, and compare with a distilled or pruned larger model, a small task-specific detector and a pretrained compact audio network.
+\end{enumerate}
+
+\section*{Individual contributions}
+\addcontentsline{toc}{section}{Individual contributions}
+
+The summary below follows the development record of the project; it should be confirmed by the team before submission.
+
+\begin{itemize}
+  \item \textbf{Nikkath Zabeen Shaik}: FT-RCL and STAR-Edge design and implementation, training and evaluation of the main comparison, statistical analysis, report.
+  \item \textbf{Bhuvan S M}: codec and resampling robustness pipeline and degradation experiments.
+  \item \textbf{Abhijith Jayan}: project set-up, CNN and recurrent baselines on both corpora, re-implementation of the published comparison system.
+  \item \textbf{Joshi Kshitij Santhosh}: to be completed by the team.
+\end{itemize}

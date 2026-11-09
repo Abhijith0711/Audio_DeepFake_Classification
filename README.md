@@ -17,6 +17,8 @@ A deep learning research framework for lightweight, robust detection of syntheti
   - [1. Resolving Input Pipeline Starvation](#1-resolving-input-pipeline-starvation)
   - [2. Transition from Zero-Padding to Repeat-Padding](#2-transition-from-zero-padding-to-repeat-padding)
   - [3. Sampling Frequency Upgrade (16 kHz to 24 kHz)](#3-sampling-frequency-upgrade-16-khz-to-24-khz)
+  - [4. Generator-Disjoint Validation Partitioning (Issue 34 Fix)](#4-generator-disjoint-validation-partitioning-issue-34-fix)
+  - [5. Multi-Seed Statistical Protocol & Convergence Budget (Issue 35 Fix)](#5-multi-seed-statistical-protocol--convergence-budget-reviewer-issue-35-fix)
 - [Empirical Results & Key Findings](#empirical-results--key-findings)
   - [ASVspoof 2019 LA Evaluation](#asvspoof-2019-la-eval-results)
   - [AT-ADD Track 2 Evaluation](#at-add-track-2-eval-results)
@@ -56,23 +58,24 @@ To investigate synthetic audio detection beyond isolated speech, the research mi
   - `singing` (singing voice conversion and neural vocoding)
   - `music` (AI-generated music tracks and accompaniment)
   - `sound` (environmental audio effects and general non-speech sounds)
-- **Generator-Disjoint (Verified):**
-  - Verified via [`src/datasets/check_at_add_integrity.py`](file:///home/abhijithjayan23bcs109/Audio_DeepFake_Classification/src/datasets/check_at_add_integrity.py): train, dev, and eval sets have **zero overlapping generators** ($\text{Train} \cap \text{Eval} = \emptyset$).
-  - Evaluates generalization across dozens of modern generative algorithms, including diffusion models, flow matching, and neural vocoders (e.g., *BigVGAN, StyleTTS2, GPTSoVITS, Free-SVC, RVC-FSD, SSM-TTM, ACE-Step, Auffusion, F5TTS, CosyVoice*).
+- **Generator-Disjoint Status (Reviewer Issue 34 Resolution):**
+  - **Legacy Benchmark Limitation:** In the official raw dataset and legacy manifests (`data/manifests/train_manifest.csv` and `dev_manifest.csv`), the development set shared **100% of its generative architectures (29/29)** with training ($G_{\text{Train}} \cap G_{\text{Dev}} = 29$), causing baseline detectors to overfit to seen generator artifacts (~0.93 Dev Macro-F1 vs. ~0.67 Eval Macro-F1).
+  - **New Generator-Disjoint Manifests:** Resolved via [`src/datasets/create_atadd_disjoint_manifests.py`](file:///home/abhijithjayan23bcs109/Audio_DeepFake_Classification/src/datasets/create_atadd_disjoint_manifests.py). The new manifests in [`data/manifests/AT_ADD/`](file:///home/abhijithjayan23bcs109/Audio_DeepFake_Classification/data/manifests/AT_ADD) hold out 8 distinct generators exclusively for validation ($16{,}000$ fake + $6{,}536$ real = $22{,}536$ clips), assign 21 generators to training ($44{,}000$ fake + $16{,}000$ real = $60{,}000$ clips), and test on 38 unseen generators in evaluation ($37{,}753$ fake + $6{,}536$ real = $44{,}289$ clips), achieving **$100\%$ pairwise generator disjointness** across all splits.
+  - **Frozen Split Status:** The disjoint split in `data/manifests/AT_ADD/` is cryptographically frozen and read-only (`chmod 444`). Full audit details, counts, domain distributions, duration distributions, and SHA-256 digests are formally recorded in [`docs/rerun/MANIFEST_FREEZE_AUDIT.md`](file:///home/abhijithjayan23bcs109/Audio_DeepFake_Classification/docs/rerun/MANIFEST_FREEZE_AUDIT.md).
 - **Speaker-Disjoint Status (Limitation):**
   - While generator disjointness is formally verified, **speaker-disjointness cannot be proven** for AT-ADD Track 2. Source-level metadata (`speaker_id`) is incomplete or unannotated across many internet sources and non-speech categories, making strict speaker separation unverifiable.
 
 ### Dataset Comparison Matrix
 
-| Property | ASVspoof 2019 LA | AT-ADD Track 2 |
-| :--- | :--- | :--- |
-| **Audio Content** | Speech only | Speech, Singing, Music, Environmental Sound |
-| **Speaker-Disjoint** | **Yes** (Strictly verified) | **Cannot be proven** (Incomplete speaker metadata) |
-| **Generator-Disjoint** | **Yes** (Train: A01–A06 vs. Eval: A07–A19) | **Yes** (Strictly verified, 0 generator overlap) |
-| **Training Partition** | 25,380 samples | 46,000 samples |
-| **Development Partition** | 24,844 samples | 36,536 samples |
-| **Evaluation Partition** | 71,237 samples | 44,289 samples |
-| **Evaluation Challenge** | Unseen voice conversion & TTS algorithms | Cross-domain acoustic shifts & diverse generative architectures |
+| Property | ASVspoof 2019 LA | AT-ADD Track 2 (Disjoint Benchmark) | AT-ADD Track 2 (Legacy Manifests) |
+| :--- | :--- | :--- | :--- |
+| **Audio Content** | Speech only | Speech, Singing, Music, Environmental Sound | Speech, Singing, Music, Environmental Sound |
+| **Speaker-Disjoint** | **Yes** (Strictly verified) | **Cannot be proven** (Incomplete speaker metadata) | **Cannot be proven** (Incomplete speaker metadata) |
+| **Generator-Disjoint** | **Yes** (Train: A01–A06 vs. Eval: A07–A19) | **Yes** (Train: 21, Dev: 8, Eval: 38 - $0\%$ overlap) | **Partial** (Train $\cap$ Dev = 29 shared; Train $\cap$ Eval = 0) |
+| **Training Partition** | 25,380 samples | **60,000 samples** (`data/manifests/AT_ADD/train_manifest.csv`) | 46,000 samples (`data/manifests/train_manifest.csv`) |
+| **Development Partition** | 24,844 samples | **22,536 samples** (`data/manifests/AT_ADD/dev_manifest.csv`) | 36,536 samples (`data/manifests/dev_manifest.csv`) |
+| **Evaluation Partition** | 71,237 samples | **44,289 samples** (`data/manifests/AT_ADD/eval_manifest.csv`) | 44,289 samples (`data/manifests/eval_manifest.csv`) |
+| **Evaluation Challenge** | Unseen voice conversion & TTS algorithms | Cross-domain acoustic shifts & 38 unseen generative architectures | Cross-domain acoustic shifts & 38 unseen generative architectures |
 
 ---
 
@@ -180,6 +183,56 @@ flowchart TD
   - STFT parameters: $N_{\text{FFT}} = 1024$, $\text{Window Length} = 600$ (25 ms), $\text{Hop Length} = 240$ (10 ms), Mel bins = 80
   - Captures acoustic artifacts up to 12 kHz, improving AT-ADD E1 evaluation EER from 21.54% down to 19.92%.
 
+### 4. Generator-Disjoint Validation Partitioning (Reviewer Issue 34 Fix)
+- **The Issue (In-Distribution Validation vs. Zero-Shot Evaluation):**  
+  In Phase-I review, Reviewer Issue 34 observed a severe generalization gap on AT-ADD baselines: Dev Macro-F1 was $\approx 0.93$ (EER $\approx 3.5\%$) while Eval Macro-F1 dropped to $\approx 0.67$ (EER $\approx 19.9\%$). Investigation revealed that the official AT-ADD Track 2 development partition shared **100% of its generative architectures (29 out of 29)** with the training partition ($G_{\text{Train}} \cap G_{\text{Dev}} = 29$). Consequently, checkpoint selection optimized for memorizing training generator artifacts rather than true out-of-distribution generalization.
+- **The Fix (Strictly Disjoint Manifest Generation):**  
+  Built a new generator-disjoint manifest creator in [`src/datasets/create_atadd_disjoint_manifests.py`](file:///home/abhijithjayan23bcs109/Audio_DeepFake_Classification/src/datasets/create_atadd_disjoint_manifests.py):
+  - **Holdout Validation (8 systems):** Holds out 8 distinct generators exclusively for dev (`CosyVoice`, `Llasa1B`, `MeloTTS`, `Tortoise-TTS`, `WaveNet`, `Audiogen`, `SeedVC`, `MusicGen`), totaling **$22{,}536$ clips** ($16{,}000$ fake + $6{,}536$ real).
+  - **Training (21 systems):** Assigns the remaining 21 generators to training, totaling **$60{,}000$ clips** ($44{,}000$ fake + $16{,}000$ real).
+  - **Evaluation (38 unseen systems):** Preserves the full stratified benchmark of **$44{,}289$ clips** ($37{,}753$ fake + $6{,}536$ real), avoiding the computational bottleneck of the raw 229k uncurated pool while retaining 100% of the 38 zero-shot evaluation architectures.
+  - **Disjointness Guarantees:** Formally asserts $\text{Train} \cap \text{Dev} = \emptyset$, $\text{Train} \cap \text{Eval} = \emptyset$, and $\text{Dev} \cap \text{Eval} = \emptyset$.
+  - **Execution:**
+    ```bash
+    python src/datasets/create_atadd_disjoint_manifests.py
+    ```
+    Outputs manifests and SHA-256 checksums to [`data/manifests/AT_ADD/`](file:///home/abhijithjayan23bcs109/Audio_DeepFake_Classification/data/manifests/AT_ADD).
+- **Dataloader Support:**  
+  Updated [`src/datasets/atadd_manifest_dataset.py`](file:///home/abhijithjayan23bcs109/Audio_DeepFake_Classification/src/datasets/atadd_manifest_dataset.py#L72-L76) to read the `folder` column (`train`, `dev`, or `eval`), loading pooled audio across physical directories with zero I/O latency penalty on local NVMe storage.
+
+### 5. Multi-Seed Statistical Protocol & Convergence Budget (Reviewer Issue 35 Fix)
+- **The Issue (Single-Seed & Premature Training Termination):**  
+  In Phase-I review, Reviewer Issue 35 highlighted two critical methodological shortcomings:
+  1. Both baseline and hybrid models were trained for at most 20 epochs from scratch; training metrics showed the models were still improving at epoch 20 (peaked at the final epoch), indicating incomplete convergence.
+  2. All experiments were conducted using only a single random seed (`42`), omitting error margins and statistical significance analysis across random weight initializations and batch orderings.
+- **The Fix (Extended Budget to Full Convergence):**  
+  - Increased the training budget from 20 to **35 epochs** (`EPOCHS = 35`).
+  - Implemented early stopping with an extended patience of **10 epochs** (`PATIENCE = 10`), monitored on Development Macro-F1.
+  - Coupled with dynamic learning rate scheduling via `torch.optim.lr_scheduler.ReduceLROnPlateau(mode='max', factor=0.5, patience=3, min_lr=1e-6)`.
+- **The Fix (3 Fixed Benchmark Random Seeds):**  
+  To provide statistically rigorous evaluation and enable reporting of **Mean ± Standard Deviation**, three fixed random seeds are established across all rerun experimental phases:
+  - **Seed 1:** `42` (`seed1`) — Primary reproducibility anchor
+  - **Seed 2:** `1337` (`seed2`) — Verification seed
+  - **Seed 3:** `2024` (`seed3`) — Triangulation seed
+- **Rerun Directory Structure & File Naming Conventions:**  
+  To ensure clean segregation between legacy single-seed runs and the new multi-seed rerun protocol, all outputs are systematically organized inside dedicated `rerun/` subdirectories with explicit seed tagging (`seed1`, `seed2`, `seed3`) embedded in all generated artifact filenames:
+  - **Checkpoints:** `checkpoints/rerun/E1/E1_MobileNetV3Small_ATADD_best_seed{1,2,3}.pt`
+  - **Experiment Records:** `experiments/baselines/rerun/E1/`
+    - Metrics: `E1_ATADD_eval_metrics_seed{1,2,3}.json`
+    - History: `E1_ATADD_training_history_seed{1,2,3}.csv`
+    - Predictions: `E1_ATADD_eval_predictions_seed{1,2,3}.csv` & `E1_ATADD_val_predictions_seed{1,2,3}.csv`
+    - Domain Breakdown: `E1_ATADD_eval_type_results_seed{1,2,3}.csv`
+    - Generator Breakdown: `E1_ATADD_eval_generator_results_seed{1,2,3}.csv`
+    - Failure Cases: `E1_ATADD_eval_failure_cases_seed{1,2,3}.csv`
+    - Feature Norms: `E1_ATADD_logmel_stats_seed{1,2,3}.json`
+    - Run Configurations: `E1_ATADD_config_seed{1,2,3}.json`
+  - **Result Tables:** `results/tables/rerun/E1/eval_domain_summary_seed{1,2,3}.csv`
+  - **Result Figures:** `results/figures/rerun/E1/`
+    - Training curves: `E1_ATADD_training_curves_seed{1,2,3}.png`
+    - Eval Confusion Matrices: `E1_ATADD_eval_confusion_matrix_seed{1,2,3}.png`
+    - Validation Matrices: `E1_ATADD_validation_confusion_matrix_seed{1,2,3}.png`
+  - **Execution Logs:** `results/logs/rerun/E1/`
+
 ---
 
 ## Empirical Results & Key Findings
@@ -229,29 +282,45 @@ Evaluation performance across individual audio categories reveals significant do
 Audio_DeepFake_Classification/
 ├── check_padding_diagnostics.py     # Standalone padding & duration distribution auditor
 ├── checkpoints/                     # Model weights & training checkpoints
+│   ├── rerun/                       # Generator-disjoint convergence reruns (35 epochs, 3 seeds)
+│   │   └── E1/                      # E1 baseline checkpoints (best_seed1.pt, best_seed2.pt, best_seed3.pt)
 │   ├── ASV_E1_v2/
 │   └── ...
 ├── configs/                         # Experiment JSON configuration templates
 ├── data/
 │   ├── manifests/
 │   │   ├── ASVSpoof/               # ASVspoof 2019 LA official manifests (train, dev, eval)
-│   │   ├── train_manifest.csv       # AT-ADD Track 2 train manifest
-│   │   ├── dev_manifest.csv         # AT-ADD Track 2 dev manifest
-│   │   └── eval_manifest.csv        # AT-ADD Track 2 eval manifest
-│   ├── metadata/                    # Source metadata & protocol mappings
-│   └── raw/                         # Raw audio storage (flac files)
-├── docs/                            # Dataset investigation reports & PDF logs
+│   │   ├── AT_ADD/                 # Production generator-disjoint manifests (train: 60k, dev: 22.5k, eval: 44.3k)
+│   │   │   ├── train_manifest.csv  # 21 training generators + 16k balanced real
+│   │   │   ├── dev_manifest.csv    # 8 holdout validation generators + 6.5k real
+│   │   │   ├── eval_manifest.csv   # 38 zero-shot unseen generators + 6.5k real
+│   │   │   └── MANIFEST_SHA256.txt # Manifest SHA-256 verification hashes
+│   │   ├── train_manifest.csv      # Legacy AT-ADD train manifest (coupled, 46k)
+│   │   ├── dev_manifest.csv        # Legacy AT-ADD dev manifest (coupled, 36.5k)
+│   │   └── eval_manifest.csv       # Stratified AT-ADD eval manifest (44.3k)
+│   ├── metadata/                   # Source metadata, generator stats & protocol mappings
+│   └── raw/                        # Raw audio storage (467,223 .flac files across train, dev, eval)
+├── docs/                           # Dataset investigation reports & PDF logs
+│   └── AT_ADDT2_rerun/             # Forensic dataset analysis & generator-disjoint design notebook
 ├── experiments/
 │   └── baselines/
-│       ├── ASV_E1_v2/               # ASV E1 v2 metrics, predictions, configs
-│       ├── ASV_E2_LSTM/             # ASV E2 LSTM metrics & comparative tables
-│       ├── E1/                      # Legacy E1 experiment artifacts (v1 & v3)
-│       ├── E1_v4/                   # AT-ADD E1 v4 (24 kHz, repeat-pad) artifacts
-│       ├── E2_GRU/                  # Legacy E2 GRU artifacts
-│       ├── E2_GRU_v4/               # AT-ADD E2 GRU v4 artifacts
-│       ├── E2_LSTM/                 # Legacy E2 LSTM artifacts
-│       └── E2_LSTM_v4/              # AT-ADD E2 LSTM v4 artifacts
+│       ├── rerun/                  # Multi-seed rerun artifacts (Issue 35)
+│       │   └── E1/                 # E1 metrics, predictions, histories, and configs for seeds 1, 2, 3
+│       ├── ASV_E1_v2/              # ASV E1 v2 metrics, predictions, configs
+│       ├── ASV_E2_LSTM/            # ASV E2 LSTM metrics & comparative tables
+│       ├── E1/                     # Legacy E1 experiment artifacts (v1 & v3)
+│       ├── E1_v4/                  # AT-ADD E1 v4 (24 kHz, repeat-pad) artifacts
+│       ├── E2_GRU/                 # Legacy E2 GRU artifacts
+│       ├── E2_GRU_v4/              # AT-ADD E2 GRU v4 artifacts
+│       ├── E2_LSTM/                # Legacy E2 LSTM artifacts
+│       └── E2_LSTM_v4/             # AT-ADD E2 LSTM v4 artifacts
 ├── notebooks/
+│   ├── AT_ADD/                     # Comprehensive generator-disjointness audit scripts & reports
+│   │   └── Rerun/                  # Generator-disjoint retraining notebooks (35 epochs, 3 seeds)
+│   │       ├── ATADD_E1_MobileNetV3Small_Disjoint_24kHz_RepeatPad.ipynb        # Master E1 rerun notebook
+│   │       ├── ATADD_E1_MobileNetV3Small_Disjoint_24kHz_RepeatPad_seed1.ipynb  # Configured for Seed 1 (42)
+│   │       ├── ATADD_E1_MobileNetV3Small_Disjoint_24kHz_RepeatPad_seed2.ipynb  # Configured for Seed 2 (1337)
+│   │       └── ATADD_E1_MobileNetV3Small_Disjoint_24kHz_RepeatPad_seed3.ipynb  # Configured for Seed 3 (2024)
 │   ├── ASV_E1_MobileNetV3Small_Baseline_v1.ipynb          # ASV E1 v1 (16 kHz, zero-pad, workers=0)
 │   ├── ASV_E1_MobileNetV3Small_Baseline_v2_corrected.ipynb# ASV E1 v2 (24 kHz, optimized pipeline)
 │   ├── ASV_E2_MobileNetV3Small_GRU_Baseline_v1.ipynb      # ASV E2 GRU v1
@@ -263,18 +332,23 @@ Audio_DeepFake_Classification/
 │   ├── ATADD_E2_MobileNetV3Small_GRU_Baseline_v4_24kHz_RepeatPad.ipynb # AT-ADD E2 GRU v4
 │   └── ATADD_E2_MobileNetV3Small_LSTM_Baseline_v4_24kHz_RepeatPad.ipynb# AT-ADD E2 LSTM v4
 ├── results/
-│   ├── figures/                     # Training curves, confusion matrices, ROC curves
-│   ├── logs/                        # Epoch logs & execution outputs
-│   └── tables/                      # Padding diagnostics & detailed evaluation tables
+│   ├── figures/                    # Training curves, confusion matrices, ROC curves
+│   │   └── rerun/                  # Rerun figures with seed tags (curves, eval/val CMs)
+│   ├── logs/                       # Epoch logs & execution outputs
+│   │   └── rerun/                  # Rerun execution logs
+│   └── tables/                     # Padding diagnostics & detailed evaluation tables
+│       └── rerun/                  # Rerun domain summaries (eval_domain_summary_seed{1,2,3}.csv)
 └── src/
     ├── datasets/
-    │   ├── check_at_add_integrity.py# Generator leakage & metadata audit script
-    │   ├── create_btp_dataset.py    # Manifest generator with balance checks
-    │   └── verify_at_add.py         # File existence validator against manifests
+    │   ├── atadd_manifest_dataset.py       # PyTorch Dataset supporting multi-folder audio resolution
+    │   ├── check_at_add_integrity.py       # Generator leakage & metadata audit script
+    │   ├── create_atadd_disjoint_manifests.py # Production generator-disjoint manifest creator (Issue 34)
+    │   ├── create_btp_dataset.py           # Outdated legacy manifest generator (deprecated)
+    │   └── verify_at_add.py                # File existence validator against manifests
     └── preprocessing/
-        ├── prepare_asvspoof_v1.py   # ASVspoof 2019 protocol parser & SHA256 hasher
-        ├── preprocess_atadd.py      # Legacy 16 kHz audio frontend
-        └── preprocess_atadd_v4.py   # Production 24 kHz + repeat-pad + GPU STFT module
+        ├── prepare_asvspoof_v1.py  # ASVspoof 2019 protocol parser & SHA256 hasher
+        ├── preprocess_atadd.py     # Legacy 16 kHz audio frontend
+        └── preprocess_atadd_v4.py  # Production 24 kHz + repeat-pad + GPU STFT module
 ```
 
 ---

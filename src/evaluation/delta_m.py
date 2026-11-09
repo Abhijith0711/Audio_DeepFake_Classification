@@ -5,10 +5,17 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import torch
+
+from src.device import select_device
 import yaml
 from tqdm import tqdm
 
-from src.datasets.atadd_manifest_dataset import audio_root_from_config, find_project_root, load_manifest_df
+from src.datasets.atadd_manifest_dataset import (
+    audio_root_from_config,
+    find_project_root,
+    load_manifest_df,
+    stratified_indices,
+)
 from src.evaluation.metrics import calculate_metrics
 from src.evaluation.plotting import save_delta_m_heatmap
 from src.evaluation.eval_runner import build_model_from_checkpoint
@@ -55,7 +62,7 @@ def main():
     with (project_root / args.config).open("r", encoding="utf-8") as f:
         config = yaml.safe_load(f)
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = select_device()
     try:
         checkpoint = torch.load(project_root / args.checkpoint, map_location=device, weights_only=False)
     except TypeError:
@@ -83,9 +90,14 @@ def main():
 
     for split in [s.strip() for s in args.splits.split(",") if s.strip()]:
         manifest_rel = config["dataset"][f"{split}_manifest"]
-        df = load_manifest_df(project_root, manifest_rel, split, max_samples=args.max_samples)
+        df = load_manifest_df(project_root, manifest_rel, split)
+
+        if args.max_samples is not None:
+            # Manifests are sorted by type/label, so take a stratified subset, not the first N rows.
+            df = df.iloc[stratified_indices(df, args.max_samples)].reset_index(drop=True)
 
         clean_waveforms = []
+        file_ids = []
         labels = []
         types = []
 
@@ -108,6 +120,7 @@ def main():
                 waveform = repeat_pad_audio(waveform, num_samples)
 
             clean_waveforms.append(waveform.astype(np.float32))
+            file_ids.append(str(row["file_id"]))
             labels.append({"real": 0, "fake": 1}[str(row["label"])])
             types.append(str(row.get("type", "unknown")))
 
@@ -118,7 +131,7 @@ def main():
                 continue
 
             if condition.family == "mp3_codec" and not ffmpeg_available():
-                continue
+                raise RuntimeError("ffmpeg is required for MP3 conditions but was not found on PATH.")
 
             degraded = []
 
@@ -128,7 +141,7 @@ def main():
                     sample_rate,
                     condition,
                     mode="deterministic",
-                    source_id=f"sample_{i}",
+                    source_id=file_ids[i],
                 )
                 degraded.append(deg)
 

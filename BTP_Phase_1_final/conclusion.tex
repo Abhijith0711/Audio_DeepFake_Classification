@@ -1,0 +1,36 @@
+\chapter{Conclusion and Future Work}
+\label{ch:conclusion}
+
+\section{Conclusion}
+
+\subsection{Summary}
+
+This project implemented lightweight binary audio deepfake detection for AT-ADD Track~2 using log-mel features and MobileNetV3-Small, together with FT-RCL robustness training: paired clean/degraded views, prediction and signature coherence, a severity curriculum, and gated robustness losses. The STAR-Edge extension, with asymmetric bona-fide robustness, severity trajectory coherence, and channel auxiliary detection, was also implemented and trained. In every case the inference graph is that of the baseline: one mel computation and one forward pass of a ${\sim}1.52$\,M-parameter network.
+
+On clean evaluation audio, the baseline achieved Macro-F1 0.672 and EER 0.216, and FT-RCL reached Macro-F1 0.659 and EER 0.234 under the same protocol. Both systems give usable detection on speech and singing (EER 0.16--0.21) but struggle on music and environmental sound (EER 0.39--0.47). FT-RCL gave slightly better Macro-F1 on environmental sound and music but no uniform gain on aggregate clean metrics, and the type-averaged Macro-F1 of the two systems is essentially the same (0.587 versus 0.589). The results confirm that all-type detection remains difficult for compact CNNs, especially on music, in line with the AT-ADD benchmark findings~\cite{xie2026atadd}.
+
+Primary conclusions rest on clean held-out evaluation (13{,}287 clips). Section~\ref{sec:degraded-eval} adds a preliminary conditioned $\Delta M$ study on 100 clips per model, which validates the evaluation pipeline but is too small for robustness ranking. The M1/M2 ablations and the held-out STAR-Edge evaluation have not been run, and on-device latency and quantization have not been measured. The report therefore claims observed differences on clean audio and does not claim proven compression robustness or edge suitability.
+
+\subsection{Limitations}
+
+\begin{itemize}[itemsep=2pt,topsep=2pt,parsep=0pt]
+  \item \textbf{Training scale and statistical power.} Each system was trained once with a single seed under a student-scale compute budget, so the observed differences cannot be tested for significance and may change with longer training or additional data.
+  \item \textbf{Limited conditioned evaluation:} Section~\ref{sec:degraded-eval} uses $n{=}100$ clips per model; full eval-set $\Delta M$ and MP3 conditions (when ffmpeg is missing) are incomplete~\cite{gao2024p2v,zhang2025sensorsSurvey}.
+  \item \textbf{Speaker and source leakage} between partitions cannot be fully verified from the available AT-ADD metadata.
+  \item \textbf{MP3 degradations} depend on an external codec toolchain; if it is unavailable, the severity ladder is incomplete.
+  \item \textbf{Edge deployment} (quantization, latency, memory on a device) is not validated in this phase~\cite{rabhi2024adversarial,alnaqbi2026systematic}.
+  \item \textbf{STAR-Edge} has been trained, but its held-out evaluation is not included in the primary result tables.
+\end{itemize}
+
+\section{Future work}
+
+\begingroup
+\setlength{\parskip}{0.35em}
+\begin{enumerate}[label=\textbf{\arabic*.},leftmargin=*,itemsep=0.35em,topsep=0pt]
+  \item \textbf{Larger-scale training and $\Delta M$.} Train and evaluate the baseline and FT-RCL on the complete evaluation split with the full degradation catalog; repeat with several seeds for significance testing.
+  \item \textbf{Ablations and STAR-Edge evaluation.} Complete the M1/M2 ablations to separate the contributions of prediction coherence, signature coherence, and the robustness gate; evaluate the STAR-Edge checkpoint under the same clean held-out protocol; and compare $J$-score checkpointing with development-Macro-F1 checkpointing.
+  \item \textbf{Training stability.} Stabilize the training-loss logging (higher-precision loss computation) for reliable FT-RCL monitoring under mixed precision.
+  \item \textbf{Edge benchmarking.} Execute an edge benchmark: parameter count, checkpoint size, batch-1 latency on a defined device, peak memory, and INT8 quantization accuracy.
+  \item \textbf{Failure analysis.} Analyse failure cases by generator, especially music text-to-music systems, to guide targeted robustness or architecture changes.
+\end{enumerate}
+\endgroup

@@ -191,11 +191,13 @@ with `λ=0.5` initially; compare to E1’s **dev Macro-F1 only** selection in ab
 
 ## 10. One-slide pitch for guide
 
-> We keep the E1 v4 edge backbone. Under Bhuvan’s degradations, we train the network so that **fake/real decisions** and **mel-band artifact summaries** stay coherent— but only when the model is already confident and for audio types where robustness helps. Checkpoint selection optimizes **clean accuracy minus robustness drop (ΔM)**, not dev accuracy alone. Ablations isolate frequency-time coherence vs standard prediction consistency.
+> We keep the E1 v4 edge backbone. Under Bhuvan’s degradations, we train the network so that **fake/real decisions** and **mel-band artifact summaries** stay coherent— but only when the model is already confident and for audio types where robustness helps. Checkpoint selection for M0–M3 is **development macro-F1**, with EER logged every epoch. Ablations isolate frequency-time coherence vs standard prediction consistency.
 
 ---
 
-## 11. Stronger novelty variant — **STAR-Edge** (recommended upgrade)
+## 11. Stronger novelty variant — **STAR-Edge** (future work)
+
+**Status:** STAR-Edge is not in the training code. The loss module, channel encoder, artifact projector, and `e7_star_edge_atadd_v1.yaml` were removed. The runnable modes are M0, M1, M2, and M3. The rest of this section is a design note for later work.
 
 **Name:** **S**everity-**T**rajectory **A**rtifact **R**obustness for **Edge** detection  
 **Relation to FT-RCL:** STAR-Edge **includes** FT-RCL (PC + FTSC + gating + curriculum + ΔM selection) and adds three mechanisms that are harder to dismiss as “standard consistency.”
@@ -324,12 +326,6 @@ Still compatible with Joshi INT8 stage on **same** MobileNet backbone.
 
 STAR-Edge is **more novel** than FT-RCL for an honours viva, but it is still **not** claiming a new foundation model or benchmark. Success = **ablations + ΔM gains + real-only FPR story** on AT-ADD frozen eval.
 
-### 11.10 Implementation add-ons (when coding)
+### 11.10 Implementation add-ons
 
-| Component | Path (planned) |
-|-----------|----------------|
-| Trajectory batch sampler | `src/training/samplers/severity_ladder.py` |
-| Channel stats + MLP | `src/models/channel_encoder.py` |
-| Artifact projection | `src/models/artifact_projector.py` |
-| STAR-Edge loss | `src/training/losses/star_edge.py` |
-| Config | `configs/proposed/e7_star_edge_atadd_v1.yaml` |
+Not implemented. Do not add these paths back unless STAR-Edge is revived as a separate experiment.

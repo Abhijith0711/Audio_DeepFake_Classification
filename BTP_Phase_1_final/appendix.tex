@@ -1,0 +1,37 @@
+\chapter{Implementation Details}
+\label{app:details}
+
+\section{Configuration reference}
+\label{app:config}
+
+Key fields of the FT-RCL configuration, stored in\\\texttt{configs/proposed/e7\_ft\_rcl\_atadd\_v1.yaml}:
+\begin{itemize}
+  \item \textbf{Preprocessing:} version \texttt{v4.0\_24khz\_repeat\_pad}; mel statistics stored in\\\texttt{E1\_ATADD\_logmel\_stats\_v4.json}.
+  \item \textbf{Training:} batch size 32, 20 epochs, AdamW with learning rate $10^{-3}$ and weight decay $10^{-4}$, early-stopping patience 5, seed 42.
+  \item \textbf{Selection:} \texttt{use\_j\_score: true}, $\lambda = 0.5$, \texttt{delta\_max\_batches: 5}.
+  \item \textbf{FT-RCL:} $\beta = 0.5$, $\gamma_{\mathrm{pc}} = 1.0$, $\gamma_{\mathrm{ftsc}} = 0.5$; type weights $\alpha_t$: speech and singing 1.0, music 0.3, sound 0.5; curriculum epochs $[1, 6, 13]$ $\rightarrow$ maximum severities $[1, 3, 4]$.
+  \item \textbf{STAR-Edge:} all flags \texttt{false} in this configuration; the STAR-Edge run uses a separate configuration file.
+\end{itemize}
+
+\section{Training-loop pseudocode}
+\label{app:pseudo}
+
+The following pseudocode outlines one training run for modes M1--M3 (Section~\ref{sec:losses}).
+
+\begingroup
+\small
+\begin{verbatim}
+for epoch in 1..E:
+  set_max_severity(curriculum(epoch))
+  for clean_w, deg_w, y, type, meta in train_loader:
+    if mode == M1:
+      loss = CE(model(mel(deg_w)), y)
+    elif mode in {M2, M3}:
+      zc, sc, _ = model(mel(clean_w), waveforms=clean_w)
+      zd, sd, _ = model(mel(deg_w),   waveforms=deg_w)
+      eta  = mean(severity/meta) if M3 else 1.0
+      loss = ft_rcl_loss(zc, zd, y, sc, sd, type, eta, ...)
+    backward(loss); AdamW.step()
+  save checkpoint if J-score improves
+\end{verbatim}
+\endgroup

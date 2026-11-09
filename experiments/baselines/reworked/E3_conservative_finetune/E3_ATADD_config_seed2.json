@@ -1,0 +1,97 @@
+{
+  "experiment": "E3_ATADD_Reworked_seed2",
+  "seed_tag": "seed2",
+  "seed": 1337,
+  "experiment_version": "v6.1_reworked_panns_mobilenetv2_conservative_seed2",
+  "model_family": "PANNs_MobileNetV2_AudioSet_Pretrained_Adapted80Mel",
+  "preprocessing_module": "src/preprocessing/preprocess_atadd_rerun.py",
+  "dataset_preparation_version": "AT-ADD_reworked_v1",
+  "model": {
+    "name": "PANNs-MobileNetV2-AudioSet",
+    "weights": "AudioSet_pretrained",
+    "pretrained_weights_path": "/home/abhijithjayan23bcs109/Audio_DeepFake_Classification/pretrained/panns/MobileNetV2_mAP=0.383.pth",
+    "input_channels": 1,
+    "num_classes": 2,
+    "classifier_dropout": 0.2,
+    "input_layout": "B,1,time,mel",
+    "pooling": "mean over mel-frequency axis, followed by temporal max + temporal mean",
+    "bn0": "fresh BatchNorm2d(80); original checkpoint bn0 has 64 mel bins",
+    "pretrained_load_report": {
+      "loaded_feature_tensors": 312,
+      "expected_feature_tensors": 312,
+      "loaded_fc1_tensors": 2,
+      "expected_fc1_tensors": 2,
+      "checkpoint_sha256": "22437af9eb5ed1854b5ad285b4a17d5fc566f1a3b23df40db5541f5705ca340f",
+      "checkpoint_md5": "838421a9262cce976aa247946d6e2983",
+      "expected_official_checkpoint_md5": "838421a9262cce976aa247946d6e2983",
+      "fresh_layers": [
+        "bn0 (80 mel bins; checkpoint has 64)",
+        "classifier (binary head)"
+      ]
+    },
+    "total_parameters": 3537250,
+    "trainable_parameters": 3537250
+  },
+  "audio": {
+    "sampling_rate": 24000,
+    "segment_seconds": 4,
+    "num_samples": 96000,
+    "padding_mode": "circular_repeat",
+    "n_fft": 1024,
+    "win_length": 600,
+    "hop_length": 240,
+    "n_mels": 80,
+    "mel_mean": -9.128189839814937,
+    "mel_std": 6.774427281444299
+  },
+  "threshold_calibration": {
+    "method": "maximize development Macro-F1",
+    "grid_start": 0.01,
+    "grid_stop": 0.99,
+    "grid_points": 99,
+    "grid_matches_E1_E2": true,
+    "primary_fixed_threshold": 0.5
+  },
+  "training": {
+    "batch_size": 32,
+    "epochs_budget": 25,
+    "learning_rate": 0.0003,
+    "learning_rates": {
+      "pretrained_features": 1e-05,
+      "pretrained_fc1": 5e-05,
+      "fresh_bn0": 0.0003,
+      "binary_classifier": 0.0003
+    },
+    "freeze_pretrained_bn_running_stats": true,
+    "weight_decay": 0.0001,
+    "max_grad_norm": 5.0,
+    "loss": "class_weighted_cross_entropy",
+    "class_weights": {
+      "real": 1.875,
+      "fake": 0.6818181872367859
+    },
+    "scheduler": "ReduceLROnPlateau(mode=max, factor=0.5, patience=3, min_lr=1e-6)"
+  },
+  "dataset_splits": {
+    "manifest_directory": "/home/abhijithjayan23bcs109/Audio_DeepFake_Classification/data/manifests/AT_ADDReworked",
+    "train_samples": 60000,
+    "dev_samples": 22536,
+    "eval_samples": 44289,
+    "train_run_samples": 60000,
+    "dev_run_samples": 22536,
+    "eval_run_samples": 44289,
+    "train_fraction": null,
+    "dev_fraction": null,
+    "eval_fraction": null,
+    "train_manifest_fingerprint": "c06d36f3e86ad33253769fbe969bf40fa8da676b1c9daf2c7d6b894911f4fdc7"
+  },
+  "results": {
+    "best_dev_macro_f1": 0.7431302621934484,
+    "best_epoch": 17,
+    "optimal_dev_threshold": 0.02,
+    "eval_macro_f1_05": 0.6439262880978006,
+    "eval_macro_f1_opt": 0.7262054805774191,
+    "eval_type_avg_f1_05": 0.6113108309068531,
+    "eval_type_avg_f1_opt": 0.6924814612612613
+  }
+}

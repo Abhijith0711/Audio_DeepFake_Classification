@@ -1,0 +1,58 @@
+\chapter*{List of Abbreviations}
+\addcontentsline{toc}{chapter}{List of Abbreviations}
+\begingroup
+\singlespacing\small
+\renewcommand{\arraystretch}{1.25}
+\noindent
+\begin{tabular}{@{}p{0.2\textwidth}p{0.74\textwidth}@{}}
+ABR      & Asymmetric bona-fide robustness \\
+ADD      & Audio deepfake detection \\
+ALLM     & Audio large language model \\
+AT-ADD   & All-type audio deepfake detection (benchmark) \\
+AUROC    & Area under the receiver operating characteristic curve \\
+CAD      & Channel auxiliary detection \\
+CE       & Cross-entropy \\
+CNN      & Convolutional neural network \\
+EER      & Equal error rate \\
+FNR, FPR & False-negative rate, false-positive rate \\
+FT-RCL   & Frequency-time robustness coherence learning \\
+FTSC     & Feature signature coherence \\
+M0--M3   & Training modes: clean-only baseline (M0), degraded-only (M1), dual-view with prediction coherence (M2), and the full FT-RCL objective (M3); see Table~\ref{tab:modes} \\
+PC       & Prediction coherence \\
+ROC      & Receiver operating characteristic \\
+SNR      & Signal-to-noise ratio \\
+SSL      & Self-supervised learning \\
+STC      & Severity trajectory coherence \\
+STFT     & Short-time Fourier transform \\
+TTM      & Text-to-music \\
+TTS      & Text-to-speech \\
+\end{tabular}
+\endgroup
+
+\chapter*{List of Symbols}
+\addcontentsline{toc}{chapter}{List of Symbols}
+\begingroup
+\singlespacing\small
+\renewcommand{\arraystretch}{1.25}
+\noindent
+\begin{tabular}{@{}p{0.2\textwidth}p{0.74\textwidth}@{}}
+$x,\ \tilde{x}$ & Clean waveform and its degraded counterpart \\
+$y$ & Class label ($0$ = real, $1$ = fake) \\
+$f_s,\ N$ & Sampling rate ($24{,}000$\,Hz) and segment length in samples ($96{,}000$) \\
+$g(\cdot\,;c)$ & Waveform-domain degradation operator for condition $c$ \\
+$\phi(\cdot)$ & Log-mel feature extractor \\
+$\hat{\mathbf{L}}$ & Normalized log-mel input to the network \\
+$z,\ p$ & Logits and class probabilities ($p=\mathrm{softmax}(z)$) \\
+$q$ & Fake-class probability, used as the detection score \\
+$z_c,\ z_d,\ q_c,\ q_d$ & Logits and fake-class probabilities of the clean and degraded views \\
+$s_c,\ s_d$ & Band-wise feature signatures of the clean and degraded views \\
+$K$ & Number of frequency subbands ($8$) \\
+$\rho,\ \rho_{\max}(e)$ & Degradation severity and the curriculum cap at epoch $e$ \\
+$\eta(\rho)$ & Severity scaling factor of the M3 gate \\
+$\alpha_t,\ \kappa$ & Audio-type weight and prediction confidence of the M3 gate \\
+$\bar{w}$ & Batch-mean robustness weight \\
+$\beta,\ \gamma_{\mathrm{pc}},\ \gamma_{\mathrm{ftsc}}$ & Loss coefficients \\
+$J,\ \lambda$ & Robustness-aware selection score and its trade-off weight \\
+$\Delta M$ & Metric drop, $M_{\mathrm{clean}}-M_{\mathrm{conditioned}}$ \\
+\end{tabular}
+\endgroup

@@ -1,0 +1,17 @@
+\begin{figure}[htbp]
+\centering
+\resizebox{\linewidth}{!}{%
+\begin{tikzpicture}
+\node[blk,text width=2.1cm] (w) at (0,0) {\textbf{Waveform}};
+\node[blk,text width=1.8cm] (s) at (2.5,0) {\textbf{STFT}};
+\node[blk,text width=2.0cm] (m) at (5.0,0) {\textbf{Mel bank}};
+\node[blk,text width=1.5cm] (l) at (7.5,0) {\textbf{log}};
+\node[blk,text width=2.0cm] (z) at (10.0,0) {\textbf{Z-score}};
+\draw[arr] (w)--(s);
+\draw[arr] (s)--(m);
+\draw[arr] (m)--(l);
+\draw[arr] (l)--(z);
+\end{tikzpicture}}
+\caption{Audio preprocessing and log-mel feature extraction.}
+\label{fig:mel-frontend}
+\end{figure}

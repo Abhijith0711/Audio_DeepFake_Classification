@@ -1,0 +1,27 @@
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+\begin{scope}
+\node[font=\scriptsize\bfseries\itshape,text=black!70,anchor=south west] at (-0.15,1.35) {Training (M3)};
+\draw[dashed,rounded corners=4pt,draw=black!45] (-0.35,-0.85) rectangle (4.85,1.05);
+\node[blk,text width=1.4cm] (tm) at (0,0.35) {\textbf{Mel}};
+\node[blk,text width=1.4cm] (tc) at (2.2,0.35) {\textbf{CNN}};
+\node[blk,text width=1.4cm] (ts) at (4.4,0.35) {\textbf{Loss}};
+\draw[arr] (tm)--(tc);
+\draw[arr] (tc)--(ts);
+\node[font=\scriptsize\itshape,text=black!70,align=center,text width=4.6cm] at (2.2,-0.45) {Paired clean/degraded views\\dual CE + PC + FTSC + gate};
+\end{scope}
+\begin{scope}[xshift=6.5cm]
+\node[font=\scriptsize\bfseries\itshape,text=black!70,anchor=south west] at (-0.15,1.35) {Inference (deploy)};
+\draw[dashed,rounded corners=4pt,draw=deployedge] (-0.35,-0.85) rectangle (4.85,1.05);
+\node[dep,text width=1.4cm] (im) at (0,0.35) {\textbf{Mel}};
+\node[dep,text width=1.4cm] (ic) at (2.2,0.35) {\textbf{CNN}};
+\node[dep,text width=1.4cm] (is) at (4.4,0.35) {\textbf{Score}};
+\draw[arr] (im)--(ic);
+\draw[arr] (ic)--(is);
+\node[font=\scriptsize\itshape,text=black!70,align=center,text width=4.6cm] at (2.2,-0.45) {Single mel pass\\single forward pass};
+\end{scope}
+\end{tikzpicture}
+\caption{Training versus inference workflow.}
+\label{fig:train-vs-infer}
+\end{figure}

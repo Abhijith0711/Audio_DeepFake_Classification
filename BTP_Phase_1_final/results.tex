@@ -1,0 +1,275 @@
+\chapter{Results and Evaluation}
+\label{ch:results}
+
+\section{Foundational Baseline Investigation and Architectural Selection}
+\label{sec:baseline-investigation}
+
+Before evaluating the proposed FT-RCL robustness framework, we conducted an empirical investigation into foundational baseline architectures and acoustic frontend configurations. This study addressed three core design questions in systematic order:
+\begin{enumerate}
+  \item How do frontend acoustic sampling rates and duration normalization policies affect detection validity and vulnerability to benchmark shortcuts?
+  \item Which lightweight backbone paradigm is best suited for heterogeneous all-type audio: pure 2D convolutional networks or hybrid convolutional-recurrent architectures?
+  \item How does our tailored lightweight baseline compare against published literature on the same backbone architecture?
+\end{enumerate}
+
+\subsection{Acoustic Frontend Engineering and ASVspoof 2019 Duration Shortcut Analysis}
+\label{subsec:frontend-duration-shortcuts}
+
+A critical finding from our preliminary speech benchmarking on ASVspoof 2019 Logical Access~\cite{wang2020asvspoof} concerned the choice of duration normalization and acoustic sampling bandwidth:
+\begin{itemize}
+  \item \textbf{Duration Shortcuts under Zero-Padding:} When utterances are zero-padded to a fixed 4.0-second window, classifiers readily exploit differences in active speech duration and trailing silence ratios as an unintended benchmark shortcut. On ASVspoof 2019 LA, evaluating under a 16\,kHz zero-padded frontend yielded an artificially low evaluation EER of $6.67\%$ ($E_1$ v1) and an attack detection recall exceeding $98.6\%$ on the i-vector/PLDA voice conversion system (A18). However, this high performance collapsed when evaluating continuous speech where trailing silence is absent.
+  \item \textbf{Circular Repeat-Padding as a Fair Evaluator:} Replacing trailing silence with circular repeat-padding ($\mathbf{x}_{\mathrm{padded}}[n] = \mathbf{x}[n \pmod L]$) maintains continuous acoustic energy across the entire 4.0-second window. On the same benchmark, evaluation EER under repeat-padding adjusted to $12.49\%$ ($E_1$ v2), and recall on A18 dropped to $0.43\%$. While the numerical error increased, this performance reflects true acoustic discrimination of vocoder artifacts rather than duration shortcuts.
+  \item \textbf{Matched Speech Performance (Pure CNN vs. CRNN):} Crucially, when evaluating under strictly matched preprocessing pipelines on ASVspoof 2019 LA speech, pure 2D CNN ($E_1$) consistently matches or slightly outperforms CRNN ($E_2$): $6.67\%$ vs. $6.82\%$ EER at 16\,kHz zero-pad, and $12.49\%$ vs. $12.59\%$ EER at 24\,kHz repeat-pad (with $E_2$-GRU reaching $13.82\%$). This demonstrates that temporal recurrence provides no intrinsic advantage over spatial pooling on speech when frontend confounding is removed.
+  \item \textbf{Sampling Bandwidth (16\,kHz vs. 24\,kHz):} Operating at a 24\,kHz sampling rate ($12\,\text{kHz}$ Nyquist) is critical for capturing high-frequency artifacts produced by modern neural vocoders (e.g., transposed-convolution checkerboard patterns in HiFi-GAN and BigVGAN in the 8--12\,kHz band), which are truncated by standard 16\,kHz telephonic frontends.
+\end{itemize}
+Consequently, the 24\,kHz circular repeat-padding frontend was adopted as the uniform standard across all AT-ADD Track~2 models, ensuring that robustness gains are not confounded by duration artifacts.
+
+\subsection{Backbone Architecture Ablation: Pure 2D CNN vs. CRNN on Multi-Domain Audio}
+\label{subsec:baseline-arch-ablation}
+
+Having established the 24\,kHz circular repeat-padding frontend, we evaluated two architectural paradigms under identical training protocols on the complete AT-ADD Track~2 benchmark to identify the optimal backbone for edge-constrained detection ($\le 1.52\,\text{M}$ parameters):
+\begin{itemize}
+  \item \textbf{$E_1$ Series (Pure 2D CNN):} MobileNetV3-Small~\cite{howard2019mobilenetv3} with depthwise separable convolutions, Squeeze-and-Excitation (SE) channel attention, and spatial Global Average Pooling (GAP) collapsing the spatial feature map into a 576-dimensional embedding before a two-stage classification head ($1{,}519{,}618$ total parameters).
+  \item \textbf{$E_2$ Series (CRNN):} The same MobileNetV3-Small convolutional feature extractor, but retaining the temporal sequence axis via frequency-only pooling ($\mathbb{R}^{B \times 576 \times T' \times F'} \to \mathbb{R}^{B \times T' \times 576}$) and passing the sequence through recurrent temporal pooling heads: a 1-layer GRU~\cite{gomez2019light} ($1{,}198{,}082$ parameters) and a 1-layer LSTM~\cite{chintha2020crnn} ($1{,}288{,}450$ parameters) with hidden dimension 128.
+\end{itemize}
+
+Table~\ref{tab:baseline-architecture-atadd} summarizes the official evaluation metrics on the full AT-ADD Track~2 evaluation partition.
+
+\begin{table}[htbp]
+\centering
+\caption{Baseline architecture comparison on full AT-ADD Track~2 evaluation partition.}
+\label{tab:baseline-architecture-atadd}
+\vspace{0.15cm}
+\resizebox{\textwidth}{!}{
+\begin{tabular}{@{}llcccc@{}}
+\toprule
+\textbf{Model Identifier} & \textbf{Architecture} & \textbf{Params} & \textbf{Accuracy (\%)} & \textbf{AUROC} & \textbf{EER (\%)} \\
+\midrule
+\textbf{AT-ADD $E_1$ v4} & Pure 2D CNN (Spatial GAP) & $1.52\,\text{M}$ & \textbf{75.70\%} & \textbf{0.8750} & \textbf{19.92\%} \\
+AT-ADD $E_2$ GRU v4      & CRNN (1-Layer GRU, 128-dim) & $1.20\,\text{M}$ & 69.89\% & 0.8425 & 22.43\% \\
+AT-ADD $E_2$ LSTM v4     & CRNN (1-Layer LSTM, 128-dim)& $1.29\,\text{M}$ & 69.60\% & 0.8622 & 22.15\% \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+
+The empirical results show that the pure 2D CNN with spatial global average pooling ($E_1$ v4) significantly outperforms both recurrent architectures on multi-domain audio, reducing the Equal Error Rate by over $2.2\%$ absolute ($19.92\%$ vs. $22.15\%$ for LSTM and $22.43\%$ for GRU) and achieving nearly $6\%$ higher classification accuracy. In heterogeneous audio containing polyphonic music, percussion, and diverse ambient soundscapes, local temporal ordering lacks the strict phoneme-to-phoneme transition dynamics of speech. Spatial average pooling functions as a robust ``bag-of-features'' aggregator across time-frequency bins, whereas recurrent transitions overfit to non-stationary acoustic sequences. This empirical ablation directly established MobileNetV3-Small ($E_1$) as the optimal lightweight backbone for all subsequent experiments, including Baseline M0 and FT-RCL M3.
+
+Furthermore, Table~\ref{tab:baseline-architecture-atadd} establishes the full-data performance ceiling ($19.92\%$ EER, $75.70\%$ accuracy) against which the accelerated 30\% split protocol ($21.6\%$ EER, $75.9\%$ accuracy in Section~\ref{sec:clean-eval-primary}) can be calibrated.
+
+\subsection{Empirical Literature Benchmarking against Published Work (Pham et al., 2024)}
+\label{subsec:pham-comparison}
+
+To contextualize our lightweight baseline against existing literature, we conducted an independent reproduction and benchmarking study against Pham et al. (2024)~\cite{pham2024deepfake}, who evaluated ImageNet-pretrained 2D vision backbones on ASVspoof 2019 LA. In their study, System C2 fine-tuned a MobileNet-V3 backbone on 3-channel linear filterbank spectrograms ($64 \times 64 \times 3$, static LFCC + $\Delta + \Delta\Delta$ extracted from 2.0-second slices with frame length $N_{\mathrm{FFT}} = 1024$ and hop 512, corresponding to a $64\,\text{ms}$ window and $32\,\text{ms}$ shift at 16\,kHz).
+
+We faithfully reconstructed their exact signal processing chain, network configuration, and segment-to-utterance probability pooling under our standardized optimization recipe (AdamW, cosine learning rate decay, class-weighted cross-entropy, and per-bin normalization). Table~\ref{tab:pham_comparison} compares published results, our reproduced run, and our project baselines on the official ASVspoof 2019 LA evaluation partition.
+
+\begin{table}[htbp]
+\centering
+\caption{Empirical comparison: published literature (Pham et al., 2024) vs. reproduced run and project baselines on ASVspoof 2019 LA evaluation partition.}
+\label{tab:pham_comparison}
+\vspace{0.15cm}
+\resizebox{\textwidth}{!}{
+\begin{tabular}{llcccc}
+\toprule
+\textbf{System / Model} & \textbf{Acoustic Frontend} & \textbf{Accuracy (\%)} & \textbf{F1 / Macro-F1} & \textbf{AUROC} & \textbf{EER (\%)} \\
+\midrule
+\multicolumn{6}{l}{\textit{\textbf{Tier A: Published in Pham et al. (2024) Table III:}}} \\
+Pham et al. C2 (MobileNet-V3) & STFT \& LF ($64\times 64\times 3$) & 59.00\% & 0.6700* & 0.5200 & 48.00\% \\
+Pham et al. C1 (ResNet-18)    & STFT \& LF ($64\times 64\times 3$) & 49.00\% & 0.5800* & 0.5100 & 47.00\% \\
+Pham et al. C7 (ConvNeXt-Tiny, 28.6\,M params) & STFT \& LF ($64\times 64\times 3$) & 88.00\% & 0.9000* & 0.9600 & 7.50\% \\
+Pham et al. Best Ensemble (Multi-feature)      & STFT, CQT, LF, Gammatone & 90.00\% & 0.9100* & 0.9940 & \textbf{3.00\%} \\
+\midrule
+\multicolumn{6}{l}{\textit{\textbf{Tier B: Our Independent Reproduction Run:}}} \\
+Replicated Pham C2 (Segment-level) & STFT \& LF ($64\times 64\times 3$) & 64.95\% & 0.5636\phantom{*} & 0.9162 & 17.01\% \\
+\textbf{Replicated Pham C2 (Utterance-level)} & STFT \& LF ($64\times 64\times 3$) & \textbf{64.60\%} & \textbf{0.5612}\phantom{*} & \textbf{0.9180} & \textbf{16.85\%} \\
+\midrule
+\multicolumn{6}{l}{\textit{\textbf{Tier C: Our Tailored Audio Baselines (This Project):}}} \\
+\textbf{Project $E_1$ v2 (Pure CNN)} & 80-Mel, 24 kHz, Repeat-Pad & \textbf{75.32\%} & \textbf{0.6478}\phantom{*} & \textbf{0.9324} & \textbf{12.49\%} \\
+\textbf{Project $E_1$ v1 (Pure CNN)} & 80-Mel, 16 kHz, Zero-Pad   & \textbf{90.90\%} & \textbf{0.8196}\phantom{*} & \textbf{0.9688} & \textbf{6.67\%} \\
+\bottomrule
+\end{tabular}
+}
+\vspace{0.1cm}
+\flushleft
+\footnotesize{\textit{*Pham et al. report majority-class / weighted F1, whereas Tier B and C report unweighted Macro-F1.}}
+\end{table}
+
+This comparison yields two critical insights:
+\begin{enumerate}
+  \item \textbf{Optimization Sensitivity:} In the original paper by Pham et al., System C2 reached $48.00\%$ EER, performing barely above a random coin flip. Our independent reproduction stabilized the training dynamics, bringing the exact same MobileNet-V3 backbone to \textbf{16.85\% EER} and $0.9180$ AUROC. This demonstrates that MobileNet-V3 is capable of learning discriminative representations from time-frequency audio when optimization is properly controlled.
+  \item \textbf{Acoustic Frontend Superiority:} Our tailored full-utterance log-Mel frontend ($E_1$ v2: $12.49\%$ EER under repeat-padding) substantially outperforms the 2.0-second sliced LFCC representation ($16.85\%$ EER) while operating under the same $\le 1.52\,\text{M}$ parameter budget, confirming the efficacy of our baseline pipeline.
+\end{enumerate}
+
+\section{Robustness Coherence Learning Protocol (AT-ADD Track 2 Evaluation)}
+\label{sec:ftrcl-evaluation-protocol}
+
+Having established MobileNetV3-Small ($E_1$) with the 24\,kHz repeat-padded frontend as our canonical lightweight baseline, we evaluate the proposed FT-RCL framework against this baseline under the AT-ADD Track~2 robustness benchmark. All subsequent experiments in this chapter share the following standardized protocol:
+\begin{itemize}
+  \item \textbf{Dataset:} AT-ADD Track~2 (seed 42); see Table~\ref{tab:dataset-eval}.
+  \item \textbf{Preprocessing:} 24\,kHz, four-second segments, repeat-pad policy, 80-bin log-mel, global normalization with the E1 v4 training statistics.
+  \item \textbf{Baseline model:} MobileNetV3-Small trained on clean audio only (mode M0).
+  \item \textbf{Proposed model:} FT-RCL with the full M3 objective of Equation~\eqref{eq:m3} (paired degradations, PC, FTSC, gating, $J$-score selection).
+  \item \textbf{Evaluation:} held-out evaluation clips only; no hyperparameter tuning on evaluation data.
+\end{itemize}
+
+\section{Training behaviour}
+
+Table~\ref{tab:training-peak} summarizes the peak development metrics. The baseline selects checkpoints by development Macro-F1, whereas FT-RCL uses the $J$-score of Equation~\eqref{eq:jscore}, which penalizes the estimated robustness drop on degraded development batches. The baseline reaches its peak at epoch 20, the last epoch of the training budget, so its development score may not yet have saturated and longer training could change the baseline numbers.
+
+\begin{table}[htbp]
+\centering
+\caption{Peak development metrics during training.}
+\label{tab:training-peak}
+\begin{tabular}{@{}lrrr@{}}
+\toprule
+Model & Dev Macro-F1 & Dev EER & Selection score \\
+\midrule
+Baseline (M0) & 0.930 & 0.053 & 0.930 (Macro-F1) \\
+FT-RCL (M3)   & 0.909 & 0.068 & 0.902 (best $J$) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+FT-RCL reached high training accuracy ($>$96\%) and strong development Macro-F1 (Figure~\ref{fig:training-curves-dev}). The logged training loss of M3 was numerically unstable under mixed precision (Figure~\ref{fig:training-curves-loss}), so model selection relied on development Macro-F1 and $J$ instead of the training loss. Figure~\ref{fig:dev-eer-curves} shows the development EER of both models.
+
+\figimagepair{training-curves-dev}{Development Macro-F1 and AUROC during training.}{%
+../results/figures/E1_v4_btp_p30/dev_macro_f1_auroc.png}{Baseline (M0): peak dev Macro-F1 ${\approx}0.930$ at epoch 20}{%
+../results/figures/E7_ft_rcl_btp_p30/dev_macro_f1_auroc.png}{FT-RCL (M3): peak dev Macro-F1 ${\approx}0.909$, best $J{\approx}0.902$ at epoch 12}
+
+\figimagepair{training-curves-loss}{Training loss and accuracy during training.}{%
+../results/figures/E1_v4_btp_p30/training_loss_accuracy.png}{Baseline: training loss and accuracy}{%
+../results/figures/E7_ft_rcl_btp_p30/training_loss_accuracy.png}{FT-RCL: training accuracy (loss unreliable under mixed precision)}
+
+\figimagepair{dev-eer-curves}{Development EER during training.}{%
+../results/figures/E1_v4_btp_p30/dev_eer.png}{Baseline: dev EER versus epoch}{%
+../results/figures/E7_ft_rcl_btp_p30/dev_eer.png}{FT-RCL: dev EER versus epoch}
+
+\section{Clean evaluation (primary results)}
+\label{sec:clean-eval-primary}
+
+Table~\ref{tab:overall-p30} reports the metrics on \textbf{clean} evaluation audio (no synthetic degradation at test time), and Figure~\ref{fig:ablation-modes} compares the two systems graphically.
+
+\begin{table}[htbp]
+\centering
+\caption{Overall clean evaluation metrics.}
+\label{tab:overall-p30}
+\begin{tabular}{@{}lrrrr@{}}
+\toprule
+Model & Macro-F1 & Accuracy & AUROC & EER \\
+\midrule
+Baseline (E1 v4, M0) & 0.672 & 0.759 & 0.852 & 0.216 \\
+FT-RCL (M3)          & 0.659 & 0.748 & 0.843 & 0.234 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+On the evaluation set the baseline slightly exceeds FT-RCL in aggregate Macro-F1, accuracy, AUROC, and EER. FT-RCL optimizes additional robustness terms during training, which can trade off against aggregate clean scores; clean evaluation alone does not test compression robustness, and conditioned evaluation is reported in Section~\ref{sec:degraded-eval}. The ROC curves and the confusion matrices at threshold 0.5 are shown in Figures~\ref{fig:roc-eval} and~\ref{fig:confusion-matrices}.
+
+\figimage{ablation-modes}{Clean-evaluation comparison of baseline M0 and FT-RCL M3.}{../results/figures/btp_report/ablation_m0_m3.png}
+
+\figimagepair{roc-eval}{ROC curves on clean evaluation (fake-class score).}{%
+../results/figures/E1_v4_btp_p30/roc_eval.png}{Baseline: AUROC 0.852}{%
+../results/figures/E7_ft_rcl_btp_p30/roc_eval.png}{FT-RCL: AUROC 0.843}
+
+\figimagepair{confusion-matrices}{Clean-evaluation confusion matrices at threshold 0.5.}{%
+../results/figures/E1_v4_btp_p30/confusion_matrix_eval.png}{Baseline (M0)}{%
+../results/figures/E7_ft_rcl_btp_p30/confusion_matrix_eval.png}{FT-RCL (M3)}
+
+\section{Per-audio-type analysis}
+
+Table~\ref{tab:type-p30} breaks the clean-evaluation performance down by audio type. Both models struggle on \textbf{music}. Relative to the baseline, FT-RCL improves Macro-F1 on \textbf{sound} and \textbf{music}, with trade-offs on speech and singing.
+
+\begin{table}[htbp]
+\centering
+\caption{Macro-F1 and EER by audio type (clean evaluation).}
+\label{tab:type-p30}
+\small
+\begin{tabular}{@{}lrrrr@{}}
+\toprule
+Type & \multicolumn{2}{c}{Baseline (M0)} & \multicolumn{2}{c}{FT-RCL (M3)} \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}
+ & Macro-F1 & EER & Macro-F1 & EER \\
+\midrule
+Speech  & 0.695 & 0.162 & 0.665 & 0.179 \\
+Singing & 0.794 & 0.157 & 0.764 & 0.208 \\
+Sound   & 0.467 & 0.426 & 0.522 & 0.394 \\
+Music   & 0.393 & 0.399 & 0.403 & 0.467 \\
+\midrule
+Type-averaged (AT-ADD) Macro-F1 & \multicolumn{2}{c}{0.587} & \multicolumn{2}{c}{0.589} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The last row of Table~\ref{tab:type-p30} gives the type-averaged Macro-F1 that corresponds to the AT-ADD Track~2 definition. It is the unweighted mean of the four rows above and was computed from the rounded table entries. It is much lower than the pooled value in Table~\ref{tab:overall-p30} because music and sound pull the average down, and the two systems are essentially tied on it (0.587 versus 0.589). This pronounced difficulty on music directly corroborates our foundational full-split baseline ablation ($E_1$ v4 in Section~\ref{subsec:baseline-arch-ablation}), where the music partition exhibited an EER of $46.09\%$ and Macro-F1 of $0.3907$, confirming that music classification is an intrinsic domain difficulty across both full-data and 30\% subsampled training regimes rather than a sampling artifact.
+
+\section{Degraded-audio and robustness evaluation}
+\label{sec:degraded-eval}
+
+The conditioned evaluation reported here is \textbf{preliminary}. It was run on a small set of evaluation clips ($n = 100$ clips per model), and MP3 conditions are omitted when the codec tool is unavailable.
+
+\IfFileExists{generated/delta_m_table.tex}{\input{generated/delta_m_table.tex}}{%
+No tabulated $\Delta M$ summary is available in this build; the conditioned results are shown graphically in Figures~\ref{fig:degradation-severity} and~\ref{fig:delta-m-heatmap}.\par}
+
+Figure~\ref{fig:degradation-severity} shows the conditioned Macro-F1 and $\Delta$Macro-F1 against degradation severity, and Figure~\ref{fig:delta-m-heatmap} shows the $\Delta$Macro-F1 heatmap by audio type and condition. This set contains at most 100 clips in total and therefore far fewer per audio type, so individual cells are dominated by sampling noise. These figures demonstrate the conditioned-evaluation pipeline and are not used to rank the two systems.
+
+\figimage{degradation-severity}{Conditioned Macro-F1 and $\Delta$Macro-F1 versus degradation severity ($n{=}100$ clips per model; MP3 omitted if the codec tool is unavailable).}{../results/figures/btp_report/degradation_severity.png}
+
+\figimagepair{delta-m-heatmap}{$\Delta$Macro-F1 heatmap by audio type and condition ($n{=}100$ clips per model).}{%
+../results/figures/E1_v4_btp_p30/delta_m_heatmap_type_x_condition.png}{Baseline (M0)}{%
+../results/figures/E7_ft_rcl_btp_p30/delta_m_heatmap_type_x_condition.png}{FT-RCL (M3)}
+
+\section{STAR-Edge extension}
+\label{sec:star-edge}
+
+STAR-Edge extends FT-RCL with the ABR, STC, and CAD components described in Section~\ref{sec:star-edge-method}. The extension was implemented and trained under the same data, preprocessing, and optimization settings as the other systems, and its development dynamics are shown in Figure~\ref{fig:star-edge-train-dev}. A held-out clean evaluation of the STAR-Edge checkpoint under the protocol of Table~\ref{tab:overall-p30} is not part of the comparison above; it is listed in the future work (Chapter~\ref{ch:conclusion}).
+
+% Fill in once the STAR-Edge evaluation numbers are available:
+% \begin{table}[htbp]
+% \centering
+% \caption{Clean evaluation of STAR-Edge compared with the baseline and FT-RCL.}
+% \label{tab:star-edge-eval}
+% \begin{tabular}{@{}lrrrr@{}}
+% \toprule
+% Model & Macro-F1 & Accuracy & AUROC & EER \\
+% \midrule
+% Baseline (M0) & 0.672 & 0.759 & 0.852 & 0.216 \\
+% FT-RCL (M3)   & 0.659 & 0.748 & 0.843 & 0.234 \\
+% STAR-Edge     & --- & --- & --- & --- \\
+% \bottomrule
+% \end{tabular}
+% \end{table}
+
+\figimagepair{star-edge-train-dev}{STAR-Edge training progress.}{%
+../results/figures/E7_star_edge_btp_p30/dev_macro_f1_auroc.png}{Development Macro-F1 and AUROC}{%
+../results/figures/E7_star_edge_btp_p30/training_loss_accuracy.png}{Training accuracy}
+
+\section{Edge and efficiency}
+\label{sec:efficiency}
+
+Table~\ref{tab:efficiency} summarizes stored checkpoint size for the baseline and FT-RCL (${\sim}17.6$\,MB each, ${\sim}1.52$\,M parameters). This is only a proxy for the deployment footprint; inference latency, peak memory, and INT8 accuracy have not been measured.
+
+\input{generated/efficiency_table.tex}
+
+\section{Analysis and Interpretation}
+
+\paragraph{Aggregate clean metrics:} On the evaluation set the baseline exceeds FT-RCL in Macro-F1 (0.672 versus 0.659), accuracy, AUROC, and EER (Table~\ref{tab:overall-p30}). FT-RCL optimizes auxiliary coherence terms, and its $J$-score explicitly penalizes the estimated development-time robustness drop, which can move the selected checkpoint away from the clean-optimal point. Without complete conditioned test metrics, it is not possible to say whether this trade-off improves $\Delta M$.
+
+\paragraph{Per-type patterns:} Table~\ref{tab:type-p30} shows FT-RCL improving Macro-F1 on environmental sound ($+0.055$) and music ($+0.010$) while lowering it on speech and singing ($-0.030$ each). The type-averaged Macro-F1 is essentially identical (0.587 versus 0.589), so the gains on the harder domains offset the losses on the easier ones. EER does not move in lockstep with Macro-F1: the music EER is worse for FT-RCL (0.467 versus 0.399) even though its F1 is slightly higher. Macro-F1 depends on a fixed threshold, whereas EER summarizes score ranking across thresholds, so such discrepancies are expected when score distributions shift without a uniform benefit.
+
+\paragraph{Development versus evaluation gap:} Both models reach high development Macro-F1 (${\approx}0.93$ for the baseline and ${\approx}0.91$ for FT-RCL at their best epochs) but a lower evaluation Macro-F1 (${\approx}0.66$--$0.67$). The gap reflects possible overfitting to the development data and the difficulty of the generator-disjoint evaluation partition. Claims should therefore rest on the held-out evaluation tables and not on the training curves alone (Figures~\ref{fig:training-curves-dev}--\ref{fig:dev-eer-curves}).
+
+\paragraph{Statistical caution:} A single training run with one seed does not support formal significance testing. The observed differences may change under longer training, more data, or repeated seeds, and the report therefore states \textbf{observed differences}, not proven superiority.
+
+\paragraph{Robustness and edge claims.} The conditioned results (\IfFileExists{generated/delta_m_table.tex}{Table~\ref{tab:delta-m-summary} and }{}Figures~\ref{fig:degradation-severity} and~\ref{fig:delta-m-heatmap}) come from a small number of clips, and conditioned evaluation on the complete evaluation set is required before any robustness claim. Edge suitability additionally requires latency and INT8 measurements beyond Table~\ref{tab:efficiency}.
+
+\paragraph{Edge deployment:} Stored checkpoint size is similar for both models (Table~\ref{tab:efficiency}); latency, peak memory, and INT8 accuracy on a target device remain to be measured.
+
+\section{Principal Outcomes}
+
+\begin{enumerate}
+  \item Both systems achieve usable speech and singing detection on the evaluation set (EER 0.16--0.21); \textbf{music} remains the primary failure mode (EER ${\approx}$ 0.40--0.47), and sound is also difficult (EER 0.39--0.43).
+  \item FT-RCL M3 does not surpass the baseline on \textbf{aggregate clean} metrics in these experiments. Its gains on sound and music are partial, are accompanied by mixed EER behaviour, and leave the type-averaged Macro-F1 unchanged.
+  \item The high development scores of both models, contrasted with their lower evaluation scores, call for larger-scale training and degraded-audio evaluation before conclusions about robustness are drawn.
+  \item Conditioned $\Delta M$ evaluation on the complete evaluation set and the M1/M2 ablations are required to test the core FT-RCL motivation; the preliminary results of Figures~\ref{fig:degradation-severity} and~\ref{fig:delta-m-heatmap} do not settle it.
+  \item Held-out STAR-Edge clean evaluation remains a useful next step alongside the ablations above.
+\end{enumerate}

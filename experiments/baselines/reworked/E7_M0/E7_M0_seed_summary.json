@@ -1,0 +1,32 @@
+[
+  {
+    "seed_tag": "seed1",
+    "seed": 42,
+    "best_epoch": 6,
+    "dev_macro_f1": 0.7435415461731252,
+    "eval_macro_f1": 0.6267759886368752,
+    "eval_type_avg_macro_f1": 0.5312803851541897,
+    "eval_eer": 0.2822294963160174,
+    "eval_auroc": 0.7849663174935217
+  },
+  {
+    "seed_tag": "seed2",
+    "seed": 1337,
+    "best_epoch": 9,
+    "dev_macro_f1": 0.7183440919369715,
+    "eval_macro_f1": 0.6057981737989246,
+    "eval_type_avg_macro_f1": 0.5242706179279256,
+    "eval_eer": 0.24218824593640792,
+    "eval_auroc": 0.837889114067179
+  },
+  {
+    "seed_tag": "seed3",
+    "seed": 2024,
+    "best_epoch": 10,
+    "dev_macro_f1": 0.6845511391970285,
+    "eval_macro_f1": 0.5924547978088461,
+    "eval_type_avg_macro_f1": 0.4821854796841314,
+    "eval_eer": 0.2454104987190299,
+    "eval_auroc": 0.8399361094651147
+  }
+]

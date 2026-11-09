@@ -1,9 +1,10 @@
-# E8 ablations (STAR-Edge S0–S5)
+# E8 ablations
 
-Toggle flags in `configs/proposed/e7_star_edge_atadd_v1.yaml`:
+STAR-Edge ablations are future work and are not runnable. The current comparison is the four training modes in `configs/proposed/e7_ft_rcl_atadd_v1.yaml`:
 
-- `star_edge.use_stc`
-- `star_edge.use_cad`
-- `star_edge.use_abr`
+- M0: clean cross-entropy
+- M1: degraded-view cross-entropy
+- M2: prediction coherence only
+- M3: full FT-RCL
 
-Run with `--experiment-id E8_S{0-5}_...`.
+Run them with `scripts/run_e7_reworked_seeds.py`.

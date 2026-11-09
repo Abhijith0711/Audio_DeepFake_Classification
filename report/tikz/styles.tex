@@ -1,0 +1,21 @@
+% Shared TikZ styles for the methodology diagrams
+\usetikzlibrary{arrows.meta,positioning,fit,backgrounds,calc,shapes.misc}
+\definecolor{boxfill}{RGB}{232,240,250}
+\definecolor{boxedge}{RGB}{31,73,125}
+\definecolor{trainfill}{RGB}{253,240,224}
+\definecolor{trainedge}{RGB}{191,110,20}
+\definecolor{lossfill}{RGB}{238,232,248}
+\definecolor{lossedge}{RGB}{104,70,160}
+\definecolor{deployfill}{RGB}{226,242,230}
+\definecolor{deployedge}{RGB}{40,120,70}
+\tikzset{
+  blk/.style={draw=boxedge,fill=boxfill,rounded corners=2pt,thick,align=center,font=\footnotesize,minimum height=0.95cm,text width=4.2cm,inner sep=3pt},
+  trn/.style={blk,draw=trainedge,fill=trainfill},
+  los/.style={blk,draw=lossedge,fill=lossfill},
+  dep/.style={blk,draw=deployedge,fill=deployfill},
+  arr/.style={-{Stealth[length=2.2mm]},thick,draw=black!80},
+  darr/.style={-{Stealth[length=2.2mm]},thick,dashed,draw=black!60},
+  stage/.style={draw=black!45,dashed,rounded corners=4pt,inner sep=7pt},
+  stlab/.style={font=\scriptsize\bfseries\itshape,text=black!70,anchor=south west},
+  note/.style={font=\scriptsize\itshape,text=black!70,align=center}
+}

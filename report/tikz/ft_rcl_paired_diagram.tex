@@ -1,0 +1,19 @@
+\begin{figure}[htbp]
+\centering
+\resizebox{0.92\linewidth}{!}{%
+\begin{tikzpicture}
+\node[blk,text width=2.6cm] (c) at (-2.2,1.1) {\textbf{Clean mel}};
+\node[trn,text width=2.6cm] (d) at (-2.2,-1.1) {\textbf{Degraded mel}};
+\node[blk,text width=3.4cm] (bb) at (1.6,0) {\textbf{Shared MobileNetV3}\\backbone + signatures};
+\node[los,text width=2.0cm] (lcls) at (5.4,1.35) {$\mathcal{L}_{\mathrm{cls}}$\\dual CE};
+\node[los,text width=2.0cm] (lpc) at (5.4,0) {$\mathcal{L}_{\mathrm{PC}}$\\coherence};
+\node[los,text width=2.0cm] (lft) at (5.4,-1.35) {$\mathcal{L}_{\mathrm{FTSC}}$\\signatures};
+\draw[arr] (c)--(bb);
+\draw[arr] (d)--(bb);
+\draw[arr] (bb)--(lcls);
+\draw[arr] (bb)--(lpc);
+\draw[arr] (bb)--(lft);
+\end{tikzpicture}}
+\caption{FT-RCL paired clean/degraded-view training architecture.}
+\label{fig:ft-rcl-paired}
+\end{figure}

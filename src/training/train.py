@@ -6,6 +6,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import torch
+
+from src.device import select_device
 import yaml
 
 from src.datasets.atadd_manifest_dataset import (
@@ -110,6 +112,7 @@ def main():
     parser.add_argument("--experiment-id", required=True)
     parser.add_argument("--checkpoint", default=None, help="Skip training; load weights for eval only")
     parser.add_argument("--epochs", type=int, default=None)
+    parser.add_argument("--seed", type=int, default=None, help="Override the training seed in the config")
     parser.add_argument("--max-samples", type=int, default=None)
     parser.add_argument(
         "--data-fraction",
@@ -127,6 +130,9 @@ def main():
 
     if args.epochs is not None:
         config["training"]["epochs"] = args.epochs
+
+    if args.seed is not None:
+        config["training"]["seed"] = args.seed
 
     sample_fraction = resolve_sample_fraction(config, args.data_fraction)
     sample_seed = config["training"]["seed"]
@@ -149,7 +155,7 @@ def main():
 
     seed_everything(config["training"]["seed"])
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = select_device()
 
     if device.type == "cuda":
         torch.backends.cudnn.deterministic = True
@@ -257,7 +263,7 @@ def main():
             ckpt = torch.load(project_root / args.checkpoint, map_location=device, weights_only=False)
         except TypeError:
             ckpt = torch.load(project_root / args.checkpoint, map_location=device)
-        trainer.model.load_state_dict(ckpt["model_state_dict"], strict=False)
+        trainer.model.load_state_dict(ckpt["model_state_dict"], strict=True)
         best_path = Path(project_root / args.checkpoint)
         logger.info("Loaded checkpoint from %s", best_path)
     else:
