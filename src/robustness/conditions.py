@@ -1,3 +1,17 @@
+"""Ordinal degradation severity used by the FT-RCL curriculum.
+
+Each condition has an integer severity. A higher number is treated as a harder
+distortion, and equal numbers share one curriculum stage. The numbers are an
+order chosen for training. They are not a calibrated distance: two conditions
+with the same severity are not claimed to be equally hard, and the gap from 1
+to 2 is not the same kind of gap as from 3 to 4.
+
+The assignment is documented in ``docs/SEVERITY_SCALE.md``. To measure hardness
+from a clean model's development AUROC drop, run
+``scripts/estimate_condition_severity.py``. That script does not change the
+labels below.
+"""
+
 from dataclasses import dataclass, field
 from typing import Any, Dict, Optional
 

@@ -32,6 +32,28 @@ def test_subband_pool_never_returns_empty_bands():
         assert torch.allclose(sig.norm(dim=-1), torch.ones(2, 8), atol=1e-5)
 
 
+def test_eight_bands_are_distinct_on_an_80_bin_input_and_finite_under_autocast():
+    rows = torch.zeros(1, 24, 10, 4)
+    for height in range(10):
+        rows[0, height, height, :] = 1.0
+    pooled = SubbandPool(8)(rows)
+    assert torch.all(torch.pdist(pooled[0]) > 1e-4)
+
+    model = FTRCLDetector(signature_stage=3)
+    ramp = torch.linspace(-1, 1, 80).view(1, 1, 80, 1).expand(1, 1, 80, 32).contiguous()
+    _logits, _feat, mid = model.backbone(ramp, tap=3)
+    assert mid.shape[1] == 24
+    assert mid.shape[2] >= 8
+
+    with torch.amp.autocast("cpu", dtype=torch.float16):
+        logits, signature, _ = model(ramp)
+    assert signature.shape == (1, 8, 24)
+    assert signature.dtype == torch.float32
+    assert torch.isfinite(signature).all()
+    assert torch.isfinite(logits.float()).all()
+    assert torch.pdist(signature[0].float()).max() > 1e-3
+
+
 def test_real_backbone_signature_and_loss_are_finite():
     model = FTRCLDetector()
     x = torch.randn(4, 1, 80, 401)

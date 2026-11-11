@@ -72,6 +72,13 @@ def save_config_resolved(experiment_dir, config):
     return path
 
 
+def write_run_summary(experiment_dir, summary):
+    path = experiment_dir / "run_summary.json"
+    with path.open("w", encoding="utf-8") as handle:
+        json.dump(summary, handle, indent=2)
+    return path
+
+
 def append_train_log(experiment_dir, row):
     path = experiment_dir / "train_log.jsonl"
 

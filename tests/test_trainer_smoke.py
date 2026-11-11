@@ -1,3 +1,6 @@
+import copy
+import json
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -45,11 +48,11 @@ class _Paired(Dataset):
         return wave, wave + 0.01 * torch.randn_like(wave), torch.tensor(i % 2), "speech", meta
 
 
-def _trainer(tmp_path, mode):
+def _trainer(tmp_path, mode, config=None):
     device = torch.device("cpu")
     logmel = GPULogMel(SR, 512, 400, 160, 80)
     frontend = MelFrontend(logmel, 0.0, 1.0, device)
-    return Trainer(CONFIG, tmp_path, tmp_path, tmp_path, frontend, device, mode=mode)
+    return Trainer(config or CONFIG, tmp_path, tmp_path, tmp_path, frontend, device, mode=mode)
 
 
 @pytest.mark.parametrize("mode", ["M0", "M1", "M2", "M3"])
@@ -63,6 +66,35 @@ def test_mode_training_step_is_finite_and_updates_weights(tmp_path, mode):
     loss, _ = trainer.train_one_epoch(loader, nn.CrossEntropyLoss(), epoch=1)
     assert np.isfinite(loss)
     assert any(not torch.equal(b, p) for b, p in zip(before, trainer.model.parameters()))
+
+
+def test_checkpoint_eligibility_follows_the_config(tmp_path):
+    cfg = copy.deepcopy(CONFIG)
+    cfg["selection"] = {"eligible_from_final_stage": True}
+    m3 = _trainer(tmp_path, "M3", cfg)
+    m0 = _trainer(tmp_path, "M0", cfg)
+    assert m3.checkpoint_eligible(7) is False
+    assert m3.checkpoint_eligible(13) is True
+    assert m3.checkpoint_eligible(4) is False
+    assert m0.checkpoint_eligible(3) is True
+    assert m3.model.signature_stage == 3
+
+
+def test_run_summary_records_severity_and_skips_ineligible_epochs(tmp_path):
+    cfg = copy.deepcopy(CONFIG)
+    cfg["selection"] = {"eligible_from_final_stage": True}
+    trainer = _trainer(tmp_path, "M3", cfg)
+    train_loader = DataLoader(_Paired(), batch_size=4, collate_fn=collate_paired_batch)
+    dev_loader = DataLoader(_Dev(), batch_size=8, collate_fn=collate_manifest_batch)
+    trainer.fit(train_loader, dev_loader, nn.CrossEntropyLoss(), epochs=1, patience=5)
+    summary = json.loads((tmp_path / "run_summary.json").read_text())
+    assert summary["mode"] == "M3"
+    assert summary["best_epoch"] is None
+    assert summary["selected_max_severity"] is None
+    assert not (tmp_path / "best.pt").exists()
+    history = pd.read_csv(tmp_path / "training_history.csv")
+    assert int(history.loc[0, "max_severity"]) == 1
+    assert str(history.loc[0, "checkpoint_eligible"]).lower() in ("false", "0")
 
 
 def test_early_stop_waits_until_the_epoch_after_severity_4():

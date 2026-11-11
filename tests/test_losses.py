@@ -1,8 +1,15 @@
+import numpy as np
 import pytest
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
-from src.training.losses.ft_rcl import ft_rcl_loss, ftsc_loss, prediction_coherence_loss
+from src.training.losses.ft_rcl import (
+    ft_rcl_loss,
+    ftsc_loss,
+    prediction_coherence_loss,
+    robustness_weight,
+)
 
 
 def test_prediction_coherence_forward():
@@ -11,6 +18,44 @@ def test_prediction_coherence_forward():
     loss = prediction_coherence_loss(p_clean, p_deg)
     assert loss.ndim == 0
     assert loss.item() >= 0
+
+
+def _reference_js(p, q, eps=1e-6):
+    p = np.clip(p, eps, None)
+    p = p / p.sum(axis=-1, keepdims=True)
+    q = np.clip(q, eps, None)
+    q = q / q.sum(axis=-1, keepdims=True)
+    m = np.clip(0.5 * (p + q), eps, None)
+    m = m / m.sum(axis=-1, keepdims=True)
+    kl_pm = np.sum(p * (np.log(p) - np.log(m)), axis=-1)
+    kl_qm = np.sum(q * (np.log(q) - np.log(m)), axis=-1)
+    return float(np.mean(np.clip(0.5 * (kl_pm + kl_qm), 0.0, None)))
+
+
+def test_jensen_shannon_matches_reference():
+    torch.manual_seed(0)
+    logits_clean = torch.randn(6, 2)
+    logits_deg = torch.randn(6, 2)
+    probs_clean = F.softmax(logits_clean, dim=1)
+    probs_deg = F.softmax(logits_deg, dim=1)
+    got = prediction_coherence_loss(probs_clean, probs_deg, pc_loss="js")
+    reference = _reference_js(probs_clean.numpy(), probs_deg.numpy())
+    assert got.dtype == torch.float32
+    assert got.item() == pytest.approx(reference, abs=1e-5)
+    mse = prediction_coherence_loss(probs_clean, probs_deg)
+    assert mse.item() == pytest.approx(torch.mean((probs_clean[:, 1] - probs_deg[:, 1]) ** 2).item())
+
+
+def test_gate_modes_and_uniform_type_weights():
+    p_clean = torch.tensor([1.0, 0.5])
+    types = ["speech", "music"]
+    alpha = {"speech": 1.0, "music": 0.3}
+    assert robustness_weight(types, alpha, p_clean, 1.0, gate="full").item() == pytest.approx(0.5)
+    assert robustness_weight(types, alpha, p_clean, 1.0, gate="no_confidence").item() == pytest.approx(0.65)
+    assert robustness_weight(types, alpha, p_clean, 1.0, gate="no_type").item() == pytest.approx(0.5)
+    assert robustness_weight(types, alpha, p_clean, 0.4, gate="none").item() == pytest.approx(0.4)
+    uniform = robustness_weight(types, alpha, p_clean, 1.0, gate="full", uniform_type_weights=True)
+    assert uniform.item() == pytest.approx(0.5)
 
 
 def test_ftsc_forward():

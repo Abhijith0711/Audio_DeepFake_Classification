@@ -21,7 +21,11 @@ def build_model_from_checkpoint(checkpoint, device):
     if mode == "M0":
         model = MobileNetV3SmallAudio(num_classes=2)
     else:
-        model = FTRCLDetector(num_classes=2)
+        ft_cfg = checkpoint.get("config", {}).get("ft_rcl", {})
+        model = FTRCLDetector(
+            num_classes=2,
+            signature_stage=int(ft_cfg.get("signature_stage", 3)),
+        )
 
     model.load_state_dict(checkpoint["model_state_dict"], strict=True)
     model.to(device)
